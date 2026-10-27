@@ -52,6 +52,16 @@ button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .ab i{position:absolute;inset:auto 0 0 0;background:#e9b64955;height:0}
 .ab span{position:relative}
 .ab.ready{box-shadow:inset 0 0 0 2px var(--gold)}
+#bossbar{top:72px;left:50%;transform:translateX(-50%);width:min(440px,74%);text-align:center;background:#0b1612e0;border-radius:12px;padding:5px 10px 8px;box-shadow:inset 0 0 0 1.5px #e2633d99}
+#bossbar b{font-family:var(--display);font-size:1.15rem;display:block;line-height:1.1;margin-bottom:4px}
+#bossbar .bb{height:10px;border-radius:5px;background:#00000090;overflow:hidden}
+#bossbar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#e2633d,#f2a04a);transition:width .2s}
+#bossbar.shield{box-shadow:inset 0 0 0 1.5px #c9a3ff}
+#bossbar.shield i{background:linear-gradient(90deg,#7a44b0,#c9a3ff)}
+body.boss #toast{top:128px}
+.diffs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.diffs .btn[aria-pressed="true"]{box-shadow:inset 0 0 0 2.5px var(--gold),0 3px 0 #0b1714;background:#2c4a3e}
+.diffnote{font-size:.85rem;color:var(--muted);max-width:52ch}
 #toast{top:64px;left:50%;transform:translateX(-50%);background:#0b1612e6;border-radius:12px;padding:8px 14px;box-shadow:inset 0 0 0 1.5px #8fd18a88;font-weight:500;max-width:min(520px,90%);text-align:center;opacity:0;transition:opacity .25s}
 #toast.on{opacity:1}
 
@@ -121,6 +131,7 @@ body.touch #abil{bottom:150px}
     <canvas id="mini" class="hud" width="128" height="104" aria-hidden="true"></canvas>
     <div id="abil" class="hud"></div>
     <div id="toast" class="hud" role="status"></div>
+    <div id="bossbar" class="hud" hidden><b></b><div class="bb"><i></i></div></div>
     <div id="touch" hidden>
       <div id="stick"><div id="knob"></div></div>
       <div id="tbtns">
@@ -191,8 +202,8 @@ let stat = document.createElement("canvas"); stat.width = WW; stat.height = WH; 
 let miniBase = document.createElement("canvas"); miniBase.width = MW*2; miniBase.height = MH*2;
 const lightCv = document.createElement("canvas"), lctx = lightCv.getContext("2d");
 let AREA = "world"; const AREAS = {};
-function stashArea(){ AREAS[AREA] = {map,keep,crackHits,stat,sctx,miniBase,orcs,props,npcs,W:MW,H:MH}; }
-function useArea(id){ const a=AREAS[id]; map=a.map; keep=a.keep; crackHits=a.crackHits; stat=a.stat; sctx=a.sctx; miniBase=a.miniBase; orcs=a.orcs; props=a.props; npcs=a.npcs; MW=a.W; MH=a.H; WW=MW*TILE; WH=MH*TILE; AREA=id; }
+function stashArea(){ AREAS[AREA] = {map,keep,crackHits,stat,sctx,miniBase,orcs,props,npcs,W:MW,H:MH,chr:CHR,occ}; }
+function useArea(id){ const a=AREAS[id]; CHR=a.chr||null; occ=a.occ||new Set(); map=a.map; keep=a.keep; crackHits=a.crackHits; stat=a.stat; sctx=a.sctx; miniBase=a.miniBase; orcs=a.orcs; props=a.props; npcs=a.npcs; MW=a.W; MH=a.H; WW=MW*TILE; WH=MH*TILE; AREA=id; }
 function newSurface(w,h){ MW=w; MH=h; WW=w*TILE; WH=h*TILE; map=new Uint8Array(w*h); keep=new Uint8Array(w*h); crackHits={}; stat=document.createElement("canvas"); stat.width=WW; stat.height=WH; sctx=stat.getContext("2d"); miniBase=document.createElement("canvas"); miniBase.width=w*2; miniBase.height=h*2; }
 
 const rnd = (a,b) => a + Math.random()*(b-a);
@@ -279,7 +290,7 @@ function buildMap(){
   for(let y=39;y<=51;y++) for(let x=18;x<=45;x++){ setT(x,y,STONE); keep[y*MW+x]=1; }
   for(let x=18;x<=45;x++){ if(x<30||x>33) setT(x,39,WALL); setT(x,51,WALL); }
   for(let y=39;y<=51;y++){ setT(18,y,WALL); setT(45,y,WALL); }
-  for(let y=44;y<=50;y++) for(let x=28;x<=36;x++) setT(x,y,BLOCK);   // castle footprint
+  for(let y=44;y<=49;y++) for(let x=28;x<=36;x++) setT(x,y,BLOCK);   // castle footprint (row 50 is the front walk)
   for(let y=40;y<=41;y++) for(let x=40;x<=43;x++) setT(x,y,BLOCK);   // forge
   for(let y=46;y<=48;y++) for(let x=20;x<=22;x++) setT(x,y,BLOCK);   // wizard tent
   for(let x=39;x<=41;x++) setT(x,47,BLOCK);                          // scribe desk
@@ -356,6 +367,7 @@ function buildMap(){
   for(let y=2;y<=3;y++) for(let x=22;x<=27;x++) setT(x,y,ROCK);
   [22,23,25,26,27].forEach(x=>setT(x,4,ROCK)); setT(24,4,PATH);
   [[9,1],[9,2],[14,1],[14,2],[13,1]].forEach(([x,y])=>setT(x,y,ROCK));
+  for(let y=5;y<=8;y++) for(let x=57;x<=60;x++) setT(x,y,BLOCK);   // Dark Tower footprint
   for(let k=21;k<=28;k++) setT(k,1,ROCK);
   // library footprint
   for(let y=44;y<=46;y++) for(let x=42;x<=44;x++) setT(x,y,BLOCK);
@@ -365,7 +377,7 @@ function buildMap(){
    STATIC PAINT (terrain baked to an offscreen canvas)
    ===================================================================== */
 function blob(c,x,y,r,col){ c.fillStyle=col; c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fill(); }
-function paintStatic(x0,y0,x1,y1){ return AREA==="mine" ? paintMine(x0,y0,x1,y1) : AREA==="world" ? paintWorld(x0,y0,x1,y1) : paintWild(x0,y0,x1,y1); }
+function paintStatic(x0,y0,x1,y1){ return INDOOR(AREA) ? paintIndoor(x0,y0,x1,y1) : AREA==="mine" ? paintMine(x0,y0,x1,y1) : AREA==="world" ? paintWorld(x0,y0,x1,y1) : paintWild(x0,y0,x1,y1); }
 function paintWorld(x0,y0,x1,y1){
   const c = sctx;
   x0=clamp(x0,0,MW-1); y0=clamp(y0,0,MH-1); x1=clamp(x1,0,MW-1); y1=clamp(y1,0,MH-1);
@@ -534,7 +546,7 @@ function paintMine(x0,y0,x1,y1){
 }
 function paintMini(){
   const c = miniBase.getContext("2d");
-  const col = {[FLOOR]:"#5a4c40",[CAVE]:"#1d1713",[RAIL]:"#8a7a6a",[PIT]:"#000000",[RUBBLE]:"#7a6a5a",[CARTBR]:"#6e4a2c",[PILE]:"#9aa0a6",[ORE]:"#d0803e",[EXIT]:"#e9d48a",[BOG]:"#3c5d52",[STEP]:"#a7a196",[SINK]:"#8f9a7c",[HIDDEN]:"#3c5d52",[GATE]:"#9a6ad8",[CLIFF]:"#4f4740",[CHASM]:"#121822",[ROPE]:"#a8774a",[G]:"#79b55a",[PATH]:"#d8b67c",[TALL]:"#5f9c48",[TREE]:"#2c6a37",[WATER]:"#4f9bd0",[BRIDGE]:"#a8774a",[ROCK]:"#8e959c",[CRACK]:"#8e959c",[FENCE]:"#9c6c40",[WALL]:"#6f767c",[VINE]:"#7a44b0",[MUD]:"#8b6b44",[STONE]:"#c8c0ad",[SAND]:"#e2cf9a",[BLOCK]:"#b5ac98"};
+  const col = {[IWALL]:"#241d2e",[IFLOOR]:AREA==="castle"?"#d4c09b":AREA==="vault"?"#7b808a":"#3f3758",[CARPET]:AREA==="castle"?"#a3302b":"#5b2a78",[DAIS]:"#c8ae84",[PLATE]:"#d9a441",[VOID]:"#050308",[DOWN]:"#e9b649",[UP]:"#f2ead8",[BARS]:"#8a9098",[FURN]:"#6e5a48",[FLOOR]:"#5a4c40",[CAVE]:"#1d1713",[RAIL]:"#8a7a6a",[PIT]:"#000000",[RUBBLE]:"#7a6a5a",[CARTBR]:"#6e4a2c",[PILE]:"#9aa0a6",[ORE]:"#d0803e",[EXIT]:"#e9d48a",[BOG]:"#3c5d52",[STEP]:"#a7a196",[SINK]:"#8f9a7c",[HIDDEN]:"#3c5d52",[GATE]:"#9a6ad8",[CLIFF]:"#4f4740",[CHASM]:"#121822",[ROPE]:"#a8774a",[G]:"#79b55a",[PATH]:"#d8b67c",[TALL]:"#5f9c48",[TREE]:"#2c6a37",[WATER]:"#4f9bd0",[BRIDGE]:"#a8774a",[ROCK]:"#8e959c",[CRACK]:"#8e959c",[FENCE]:"#9c6c40",[WALL]:"#6f767c",[VINE]:"#7a44b0",[MUD]:"#8b6b44",[STONE]:"#c8c0ad",[SAND]:"#e2cf9a",[BLOCK]:"#b5ac98"};
   for(let y=0;y<MH;y++) for(let x=0;x<MW;x++){ let t=at(x,y); if(t===BLOCK && y<39 && AREA==="world") t=G; if(AREA!=="world"&&AREA!=="mine"&&(t===BLOCK||t===EXIT)) t=G; c.fillStyle = (t===G && AREA==="marsh") ? "#6f9a5e" : (t===G && AREA==="ridge") ? "#a89c86" : col[t]; c.fillRect(x*2,y*2,2,2); }
 }
 
@@ -553,7 +565,7 @@ const ORC_SPAWNS = [
 ];
 
 function spawnWorld(){
-  orcs = ORC_SPAWNS.filter(s=>!S.beaten.includes(s[0])).map(([id,k,x,y])=>{ const K=ORC_KINDS[k]; return {id, kind:k, x:x*TILE, y:y*TILE, hx:x*TILE, hy:y*TILE, hp:K.hp, max:K.hp, r:K.r, state:"idle", t:rnd(.5,2), fx:0, fy:1, flash:0, shots:0, tx:x*TILE, ty:y*TILE}; });
+  orcs = ORC_SPAWNS.filter(s=>!isBeaten(s[0])).map(mkOrc);
   npcs = [
     {id:"princess", name:"Princess Elowen", img:"maiden", h:62},
     {id:"smith", name:"Bram the Blacksmith", img:"blacksmith", h:62},
@@ -570,6 +582,7 @@ function spawnWorld(){
   if(S.stage>=15) props.push({type:"ember", x:9.5*TILE, y:8.3*TILE});
   props.push({type:"fountain", x:PLACES.fountain[0]*TILE, y:PLACES.fountain[1]*TILE+20});
   props.push({type:"towervines", x:57.5*TILE, y:12.6*TILE});
+  props.push({type:"castledoor", x:32.5*TILE, y:50.55*TILE});
   const others = Object.keys(KNIGHTS).filter(k=>k!==S.team[0]);
   BANNERS.forEach(([x,y],i)=>{
     props.push({type:"banner", i, x:x*TILE, y:y*TILE});
@@ -588,11 +601,13 @@ function spawnWorld(){
   if(pony.follow){ pony.x = P.x - 40; pony.y = P.y + 10; }
 }
 function placeNpcs(){
+  if(AREA!=="world") return;
+  if(S.stage>=16) npcs = npcs.filter(n=>n.id!=="princess");
   const pos = {princess: (S.stage>=7 && S.stage<9) ? PLACES.princessClear : S.stage===12 ? [5.6,36] : PLACES.princess, smith:PLACES.smith, wizard:PLACES.wizard, scribe:PLACES.scribe};
   npcs.forEach(n=>{ n.x = pos[n.id][0]*TILE; n.y = pos[n.id][1]*TILE; });
 }
 
-function mkOrc([id,k,x,y]){ const K=ORC_KINDS[k]; return {id, kind:k, x:x*TILE, y:y*TILE, hx:x*TILE, hy:y*TILE, hp:K.hp, max:K.hp, r:K.r, state:"idle", t:rnd(.5,2), fx:0, fy:1, flash:0, shots:0, tx:x*TILE, ty:y*TILE}; }
+function mkOrc([id,k,x,y]){ const K=ORC_KINDS[k], hp=Math.max(1,Math.round(K.hp*D().orcHp)); return {id, kind:k, x:x*TILE, y:y*TILE, hx:x*TILE, hy:y*TILE, hp, max:hp, r:K.r, state:"idle", t:rnd(.5,2), fx:0, fy:1, flash:0, shots:0, tx:x*TILE, ty:y*TILE}; }
 function buildMine(){
   map.fill(CAVE); keep.fill(0);
   const rect=(x0,y0,x1,y1,t)=>{ for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++) setT(x,y,t); };
@@ -611,7 +626,7 @@ function buildMine(){
 }
 function mkCart(tx,ty,id){ return {type:"cart", id, tx, ty, x:(tx+.5)*TILE, y:(ty+.5)*TILE+6, dx:0, dy:0, p:0, moving:false}; }
 function spawnMine(){
-  orcs = MINE_ORCS.filter(s=>!S.beaten.includes(s[0])).map(mkOrc);
+  orcs = MINE_ORCS.filter(s=>!isBeaten(s[0])).map(mkOrc);
   npcs = []; props = [];
   if(!S.mine.bridge) props.push(mkCart(10,24,"A"));
   props.push(S.mine.rubble ? mkCart(JX,8,"B") : mkCart(20,JY,"B"));
@@ -626,23 +641,23 @@ const AREA_DEF = {
   ridge:{w:40, h:40, build:()=>buildRidge(), spawn:()=>spawnRidge(), at:[20.5,36.4], fy:-1, back:[11.8,3.2], backFy:1, horse:[13,4.6], intro:"Dragon Ridge. When the wind howls on a rope bridge, hold Shift to brace or you'll be blown off."}
 };
 let revealT=0, sinks={}, fires=[], fireT=1.2, windT=0, windDir=1, gustTold=false, entryToastT=0, flyAnim=null;
-function enterArea(id){
-  const d=AREA_DEF[id];
-  race=null; stashArea();
-  if(P.mounted){ P.mounted=false; toast(`${K().horseName} waits outside.`,2500); }
-  H.x=d.horse[0]*TILE; H.y=d.horse[1]*TILE; H.coming=false;
+function enterArea(id, at){
+  const d=AREA_DEF[id], fromWorld = AREA==="world";
+  race=null; stashArea(); boss=null; shocks=[]; towerWave=null; CHR=null; occ=new Set(); pushT=0;
+  if(fromWorld){ if(P.mounted){ P.mounted=false; toast(`${K().horseName} waits outside.`,2500); }
+    H.x=d.horse[0]*TILE; H.y=d.horse[1]*TILE; H.coming=false; }
   newSurface(d.w,d.h); AREA=id; d.build(); paintStatic(0,0,MW-1,MH-1); paintMini(); d.spawn();
-  P.x=d.at[0]*TILE; P.y=d.at[1]*TILE; P.fx=d.fx||0; P.fy=d.fy; P.jump=null; P.safeX=P.x; P.safeY=P.y; P.falling=0;
+  const a=at||d.at; P.x=a[0]*TILE; P.y=a[1]*TILE; P.fx=d.fx||0; P.fy=d.fy; P.jump=null; P.safeX=P.x; P.safeY=P.y; P.falling=0;
   arrows=[]; pickups=[]; parts=[]; floats=[]; rings=[]; revealT=0; sinks={}; fires=[]; fireT=1.2; windT=0;
   const key="seen_"+id; if(!S[key]){ S[key]=true; save(); setTimeout(()=>toast(d.intro,5500),300); }
 }
 function exitArea(){
   const from=AREA, d=AREA_DEF[from];
-  stashArea(); useArea("world"); placeNpcs();
+  stashArea(); useArea("world"); placeNpcs(); boss=null; shocks=[]; towerWave=null;
   P.x=d.back[0]*TILE; P.y=d.back[1]*TILE; P.fx=d.backFx||0; P.fy=d.backFy; P.falling=0;
   arrows=[]; pickups=[]; parts=[]; floats=[]; rings=[];
   if(from==="ridge" && S.ridge.freed) freeGlade();
-  toast(from==="mine" && S.mine.tools && !S.toolsBack ? "Back in the daylight. Take the tool chest to Bram." : "Back in the daylight.");
+  toast(from==="mine" && S.mine.tools && !S.toolsBack ? "Back in the daylight. Take the tool chest to Bram." : from==="castle" ? "Back out in the courtyard." : "Back in the daylight.");
   save();
 }
 const enterMine = () => enterArea("mine");
@@ -676,7 +691,7 @@ function buildMarsh(){
   [[33,15,.9],[12,12.5,.9]].forEach(([cx,cy,r])=>disc(cx,cy,r,(x,y)=>{ if(at(x,y)===G) setT(x,y,MUD); }));
 }
 function spawnMarsh(){
-  orcs = MARSH_ORCS.filter(s=>!S.beaten.includes(s[0])).map(mkOrc);
+  orcs = MARSH_ORCS.filter(s=>!isBeaten(s[0])).map(mkOrc);
   npcs=[]; props=[];
   [["A1",40.5,13.6],["A2",36.5,8.7],["A3",35.5,24.4]].forEach(([gid,x,y])=>props.push({type:"glow", gid, x:x*TILE, y:y*TILE, lit:S.marsh.gA?999:0}));
   props.push({type:"moon", x:26.5*TILE, y:15.4*TILE});
@@ -684,10 +699,12 @@ function spawnMarsh(){
   [[43.5,13.4],[33.5,17.6],[27.4,13.4],[12,11.6],[10,20.6],[3,13.4],[6.6,19.4],[42,19.5],[25.6,18.8],[14.6,12.2]].forEach(([x,y])=>props.push({type:"glowdeco", x:x*TILE, y:y*TILE}));
 }
 function lightGlow(p){
-  if(p.lit>0 && p.lit<999){ p.lit=12; return; }
+  const dur=D().glow;
+  if(p.lit>0 && p.lit<999){ p.lit=dur; return; }
   if(p.lit>=999) return;
-  p.lit=12; burst(p.x,p.y-24,"#9ff5e0",14,120); floatText(p.x,p.y-56,"Glowing!","#9ff5e0");
+  p.lit=dur; burst(p.x,p.y-24,"#9ff5e0",14,120); floatText(p.x,p.y-56,AREA==="tower3"?"Awake!":"Glowing!","#9ff5e0");
   const g=props.filter(q=>q.type==="glow"); const n=g.filter(q=>q.lit>0).length;
+  if(AREA==="tower3"){ if(!S.c3.t3){ if(n<3) toast(`${n} of 3 moon crystals awake. Wake the rest before they fade!`,2500); else solveMoon(); } return; }
   if(!S.marsh.gA){ if(n<3) toast(`${n} of 3 plants glowing. Light the rest before they fade!`,2500); else openGate("A"); }
 }
 function openGate(which){
@@ -717,16 +734,16 @@ function buildRidge(){
   rect(6,5,34,10,G); rect(15,1,25,4,G);
   [[10,7],[14,9],[27,6],[31,9],[24,8],[12,5],[8,9],[33,6],[18,7]].forEach(([x,y])=>setT(x,y,ROCK));
   [[6,15],[33,15],[5,20],[33,20],[6,10],[34,10],[6,5],[34,5],[15,1],[25,1]].forEach(([x,y])=>setT(x,y,CLIFF));
-  if(ridgeDragonHere()){ for(let y=1;y<=4;y++){ setT(18,y,VINE); setT(22,y,VINE); } for(let x=19;x<=21;x++) setT(x,4,VINE); for(let y=1;y<=3;y++) for(let x=19;x<=21;x++) setT(x,y,BLOCK); }
 }
 function spawnRidge(){
-  orcs = RIDGE_ORCS.filter(s=>!S.beaten.includes(s[0])).map(mkOrc);
+  orcs = RIDGE_ORCS.filter(s=>!isBeaten(s[0])).map(mkOrc);
   npcs=[]; props=[];
   props.push({type:"rchest", x:2.5*TILE, y:17.6*TILE});
   props.push({type:"nest", x:20.5*TILE, y:3.9*TILE});
+  if(ridgeDragonHere()) makeDragon();
 }
 function freeDragon(){
-  S.ridge.freed=true; S.whistle=true; S.pieces=Math.max(S.pieces,3); if(S.stage<15) S.stage=15;
+  S.ridge.freed=true; S.whistle=true; S.trophies=S.trophies||{}; S.trophies.scale=true; boss=null; S.pieces=Math.max(S.pieces,3); if(S.stage<15) S.stage=15;
   for(let y=1;y<=4;y++) for(let x=18;x<=22;x++){ if(at(x,y)===VINE){ setT(x,y,G); burst((x+.5)*TILE,(y+.5)*TILE,"#ffe08a",10,150,4); } }
   paintStatic(15,0,25,6); paintMini(); fires=[]; shake=.5; save();
   say({name:"Ember the Dragon", img:"dragon"},[
@@ -748,25 +765,22 @@ function updateWild(dt){
     if(!S.marsh.gB && ["q1","q2","q3"].every(id=>S.beaten.includes(id))) openGate("B");
   }
   const sk=sinks[key];
-  const hazard = t===CHASM || (t===HIDDEN && !revealed()) || (t===SINK && sk && sk.sunk>0);
+  const hazard = t===CHASM || t===VOID || (t===HIDDEN && !revealed()) || (t===SINK && sk && sk.sunk>0);
   if(hazard && !P.jump){ P.falling=.55; burst(P.x,P.y-10, AREA==="marsh"?"#6a9a8a":"#556070",16,120); floatText(P.x,P.y-60, AREA==="marsh"?"Splash!":"Whoa!","#cfe3ff",true); return true; }
-  if(t!==SINK && t!==HIDDEN && t!==ROPE && t!==CHASM){ P.safeT=(P.safeT||0)+dt; if(P.safeT>.3){ P.safeX=P.x; P.safeY=P.y; } } else P.safeT=0;
+  if(t!==SINK && t!==HIDDEN && t!==ROPE && t!==CHASM && t!==VOID){ P.safeT=(P.safeT||0)+dt; if(P.safeT>.3){ P.safeX=P.x; P.safeY=P.y; } } else P.safeT=0;
   if(AREA==="ridge"){
     windT+=dt; const cyc=5.2; if(windT>cyc){ windT-=cyc; windDir*=-1; }
     const onRope = t===ROPE;
     if(windT>3.6 && windT<4.4 && onRope && !gustTold){ gustTold=true; toast("Wind is coming! Hold Shift to brace against it.",2600); }
     if(windT>=4.4 && onRope){ const f = P.bubble>0 ? 0 : P.blocking ? .18 : 1; moveEnt(P, windDir*100*f*dt, 0); }
-    if(ridgeDragonHere() && P.y<11*TILE && P.y>4.6*TILE){
-      fireT-=dt; if(fireT<=0){ fireT=1.25; fires.push({x:P.x+rnd(-20,20), y:P.y+rnd(-14,14), t:1.0, r:46}); fires.push({x:P.x+rnd(-140,140), y:P.y+rnd(-90,90), t:1.15, r:46}); }
-    }
-    for(let i=fires.length-1;i>=0;i--){ const f=fires[i]; f.t-=dt; if(f.t<=0){ burst(f.x,f.y-10,"#ff8a3a",22,190,5); burst(f.x,f.y-20,"#ffd27a",12,140,4); if(Math.hypot(P.x-f.x,P.y-f.y)<f.r+6) hurtPlayer({x:f.x,y:f.y},1,true); fires.splice(i,1); } }
+    for(let i=fires.length-1;i>=0;i--){ const f=fires[i]; f.t-=dt; if(f.t<=0){ burst(f.x,f.y-10,"#ff8a3a",22,190,5); burst(f.x,f.y-20,"#ffd27a",12,140,4); if(Math.hypot(P.x-f.x,P.y-f.y)<f.r+6) hurtPlayer({x:f.x,y:f.y},dmgOf(1),true); fires.splice(i,1); } }
   }
   return false;
 }
 function flyMenu(){
   if(!S.whistle) return;
   if(AREA!=="world") return toast("Ember can only reach you under the open sky.",2600);
-  const D=[["Clovervale Castle",33.6,41.9],["Coppercap Mine",24.5,6.3],["Misty Marsh edge",4.8,37.4],["Dragon Ridge trail",12.6,3.6],["Crystal clearing",44.8,10.6],["Riding course",30.4,36.2]];
+  const D=[...(S.c3&&S.c3.tower?[["Dark Tower gate",58.5,10.45]]:[]),["Clovervale Castle",33.6,41.9],["Coppercap Mine",24.5,6.3],["Misty Marsh edge",4.8,37.4],["Dragon Ridge trail",12.6,3.6],["Crystal clearing",44.8,10.6],["Riding course",30.4,36.2]];
   say({name:"Ember the Dragon", img:"dragon"}, "Ember swoops down and lowers a wing. \"Where to, friend?\"", null, ()=>[...D.map(([n,x,y])=>({label:n, fn:()=>flyTo(x,y,n)})), {label:"Stay here"}]);
 }
 function flyTo(x,y,n){
@@ -783,9 +797,10 @@ function pushCart(c){
 }
 function cartPlan(c){
   const ax=c.tx+c.dx, ay=c.ty+c.dy, t=at(ax,ay);
-  if(t===PIT){ c.dead=true; setT(ax,ay,CARTBR); S.mine.bridge=true; repaintTile(ax,ay); shake=.35; burst((ax+.5)*TILE,(ay+.5)*TILE,"#8e7a66",24,170,4); toast("The cart tumbles into the gap and wedges tight. A bridge!"); save(); return false; }
-  if(t===RUBBLE){ setT(ax,ay,FLOOR); S.mine.rubble=true; repaintTile(ax,ay); shake=.45; burst((ax+.5)*TILE,(ay+.5)*TILE,"#8a7866",30,200,5); toast("Crash! The cart smashes straight through the rubble."); save(); return false; }
-  if(c.tx===JX && c.ty===JY && c.dx===1 && c.dy===0){ if(S.mine.lever==="north"){ c.dx=0; c.dy=-1; } }
+  if(t===PIT){ c.dead=true; setT(ax,ay,CARTBR); if(AREA==="tower2") S.c3.t2bridge=true; else S.mine.bridge=true; repaintTile(ax,ay); shake=.35; burst((ax+.5)*TILE,(ay+.5)*TILE,"#8e7a66",24,170,4); toast("The cart tumbles into the gap and wedges tight. A bridge!"); save(); return false; }
+  if(t===RUBBLE){ setT(ax,ay,AREA==="tower2"?IFLOOR:FLOOR); if(AREA==="tower2") S.c3.t2rubble=true; else S.mine.rubble=true; repaintTile(ax,ay); shake=.45; burst((ax+.5)*TILE,(ay+.5)*TILE,"#8a7866",30,200,5); toast("Crash! The cart smashes straight through the rubble."); save(); return false; }
+  const J = AREA==="tower2" ? [11,5] : [JX,JY];
+  if(c.tx===J[0] && c.ty===J[1] && c.dx===1 && c.dy===0){ if(leverVal()==="north"){ c.dx=0; c.dy=-1; } }
   else if(t!==RAIL){ const turns=[[c.dy,c.dx],[-c.dy,-c.dx]].filter(([x,y])=>at(c.tx+x,c.ty+y)===RAIL); if(!turns.length) return false; c.dx=turns[0][0]; c.dy=turns[0][1]; }
   c.nx=c.tx+c.dx; c.ny=c.ty+c.dy; return true;
 }
@@ -801,10 +816,11 @@ function updateCarts(dt){
   orcs.forEach(o=>{ if(o.cartHit) o.cartHit=Math.max(0,o.cartHit-dt); });
   for(let i=props.length-1;i>=0;i--) if(props[i].dead) props.splice(i,1);
 }
+function leverVal(){ return AREA==="tower2" ? S.c3.t2lever : S.mine.lever; }
 function toggleLever(p){
   if(p.cool>0) return; p.cool=.4;
-  S.mine.lever = S.mine.lever==="north" ? "east" : "north"; save();
-  burst(p.x,p.y-30,"#e9b649",8,90); floatText(p.x,p.y-60, S.mine.lever==="north" ? "Track switched: north" : "Track switched: east", "#e9b649");
+  const v = leverVal()==="north" ? "east" : "north"; if(AREA==="tower2") S.c3.t2lever=v; else S.mine.lever=v; save();
+  burst(p.x,p.y-30,"#e9b649",8,90); floatText(p.x,p.y-60, v==="north" ? "Track switched: north" : "Track switched: east", "#e9b649");
 }
 function costText(c){ return Object.entries(c).map(([k,v])=>`${v} ${k==="ore"?"ore":k}`).join(", "); }
 function canAfford(c){ return Object.entries(c).every(([k,v])=>(k==="coins"?S.coins:S.mat[k])>=v); }
@@ -878,6 +894,616 @@ function drawDark(z,sx,sy){
   rings.forEach(r=>light(r.x,r.y,r.r*1.3));
   ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(lightCv,0,0); ctx.restore();
 }
+/* =====================================================================
+   DIFFICULTY
+   ===================================================================== */
+const DIFF = {
+  easy:  {n:"Easy",   orcHp:.8,  wind:1.2,  spd:.95, aggro:6.5, heart:.35, arrow:280, shots:2, boss:.7,  cd:1.35, respawn:false, glow:16, tip:"Gentle orcs, more hearts. Good for younger knights."},
+  normal:{n:"Normal", orcHp:1.3, wind:.85,  spd:1.12, aggro:7.5, heart:.2,  arrow:320, shots:2, boss:1,   cd:1,    respawn:true,  glow:12, tip:"Tougher orcs that come back after a while. Club slams cost 2 hearts."},
+  hard:  {n:"Hard",   orcHp:1.7, wind:.72,  spd:1.25, aggro:8.5, heart:.1,  arrow:360, shots:3, boss:1.35, cd:.8,   respawn:true,  glow:10, tip:"Fast, hard-hitting orcs and fierce bosses. Every hit hurts more."}
+};
+const D = () => DIFF[(S && S.diff) || "normal"];
+function dmgOf(base){ const d=(S && S.diff)||"normal"; return d==="easy" ? 1 : d==="hard" ? Math.min(3, base+1) : base; }
+const NO_RESPAWN = new Set(["bridge","q1","q2","q3"]);
+const RESPAWN_LISTS = {world:()=>ORC_SPAWNS, mine:()=>MINE_ORCS, marsh:()=>MARSH_ORCS, ridge:()=>RIDGE_ORCS};
+function isBeaten(id){
+  if(!S.beaten.includes(id)) return false;
+  if(!D().respawn || NO_RESPAWN.has(id) || !RESPAWN_LISTS[AREA]) return true;
+  const t=(S.beatAt||{})[id];
+  if(t!==undefined && S.time-t>240){ S.beaten=S.beaten.filter(x=>x!==id); delete S.beatAt[id]; return false; }
+  return true;
+}
+let respawnT=8;
+function updateRespawn(dt){
+  respawnT-=dt; if(respawnT>0) return; respawnT=8;
+  const L=RESPAWN_LISTS[AREA]; if(!L || !D().respawn) return;
+  L().forEach(s=>{ if(orcs.some(o=>o.id===s[0])) return; if(isBeaten(s[0])) return;
+    if(Math.hypot(s[2]*TILE-P.x, s[3]*TILE-P.y) < 9*TILE) return;
+    if(S.beaten.includes(s[0])) return; orcs.push(mkOrc(s)); });
+}
+
+/* =====================================================================
+   INDOOR AREAS: castle, vault, Dark Tower
+   ===================================================================== */
+const IWALL=32, IFLOOR=33, CARPET=34, DAIS=35, PLATE=36, VOID=37, DOWN=38, UP=39, BARS=40, FURN=41;
+[IWALL,BARS,FURN].forEach(t=>{ SOLID.add(t); ARROW_STOP.add(t); });
+const MAPS = {"castle": ["#############w####w#############", "############........############", "############...kk...############", "############........############", "##w#####w######..######w#####w##", "#....#......dddddddd......#....#", "#bb..#......dddhhddd......#...r#", "#bb..#......dddddddd......#.T.r#", "#....#.....P..cccc..P.....#....#", "#....#..tt....cccc....tt..#..T.#", "#....#..tt....cccc....tt..#....#", "#.......tt....cccc....tt.......#", "#.......tt....cccc....tt.......#", "#....#..tt....cccc....tt..#....#", "#....#.....P..cccc..P.....#....#", "#....#........cccc........#....#", "#....#........cccc........#.QQ.#", "#.S..#........cccc........#....#", "############..cccc..############", "##########....cccc....##########", "##########....cccc....##########", "##########....cccc....##########", "##########....cccc....##########", "###############EE###############"], "vault": ["################", "#U.....#.......#", "#....S.#.##..o.#", "#..##......#...#", "#..o#..S.#.....#", "#.......##..S..#", "#.#..#.........#", "#.o....#...#...#", "#########GG#####", "######.......###", "######..xx...###", "######.......###", "######.......###", "################"], "tower1": ["######################", "#########UU###########", "#########BB###########", "#.......cccc.........#", "#..P....cccc......P..#", "#.......cccc.........#", "#.......cccc.........#", "#..P....cccc......P..#", "#.......cccc.........#", "#.......cccc.........#", "#..P....cccc......P..#", "#.......cccc.........#", "#.......cccc.........#", "#.......cccc.........#", "#########EE###########"], "tower2": ["########################", "###########U############", "###########X############", "#..........R...........#", "#..........R...........#", "#..RRRRRRRRRRRRRRRRRR..#", "#......................#", "#.......P.......P......#", "#......................#", "#VVVVVVVVVVVVVVVVVVVVVV#", "#....R.................#", "#....R............######", "#....R..P.........#...##", "#....R........P...K...##", "#....R............#...##", "#....R............#...##", "#.................######", "###########D############"], "tower3": ["########################", "############U###########", "#......................#", "#....P.............P...#", "#......................#", "#VVVVVVVVVVVmVVVVVVVVVV#", "#VVVVVVVVVVVmVVVVVVVVVV#", "#VVVVVVVVVVViVVVVVVVVVV#", "#VVViVVVVVVVmVVVVVVViVV#", "#VVVVVVVVVVVmVVVVVVVVVV#", "#VVVVVVVVVVVmVVVVVVVVVV#", "#......................#", "#......................#", "#...P...............P..#", "#......................#", "#......................#", "############D###########", "########################"], "tower4": ["########################", "############U###########", "############r###########", "#####...............####", "#####...............####", "#####...............####", "#####...............####", "##########TBBBT#########", "##########.....#########", "##########.....#########", "##########.....#########", "##########.....#########", "##########.....#########", "##########.....#########", "##########.....#########", "###...................##", "###..P.............P..##", "###...................##", "###...................##", "############D###########"], "tower5": ["##########################", "##########################", "#...........LL...........#", "#........................#", "#........................#", "#........................#", "#........................#", "#.....P............P.....#", "#........................#", "#........................#", "#........................#", "#........................#", "#........................#", "#.....P............P.....#", "#........................#", "#........................#", "#........................#", "#........................#", "#........................#", "#############D############"]};
+let CHR = null, occ = new Set(), shocks = [], boss = null, towerWave = null, pushT = 0, pushDir = null;
+const LEGEND = {"#":IWALL,"w":IWALL,".":IFLOOR,"c":CARPET,"d":DAIS,"E":EXIT,"U":UP,"D":DOWN,"B":BARS,"G":BARS,"r":FURN,"P":FURN,"V":VOID,"i":IFLOOR,"m":VOID,"R":RAIL,"X":RUBBLE,"K":CRACK,"T":FURN,"L":FURN,"x":FURN,"S":FURN,"o":PLATE,"h":FURN,"k":FURN,"b":FURN,"t":FURN,"Q":FURN};
+const INDOOR = id => id==="castle" || id==="vault" || id.startsWith("tower");
+function buildIndoor(id){
+  CHR = MAPS[id]; map.fill(IWALL); keep.fill(0); occ = new Set();
+  CHR.forEach((row,y)=>[...row].forEach((ch,x)=>{
+    let t = LEGEND[ch]; if(t===undefined) t=IFLOOR;
+    if(id==="vault" && ch==="S") t=IFLOOR;
+    if(id==="tower2" && ch==="V") t=PIT;
+    if(id==="tower4" && ch==="r") t = S.c3.t4b ? IFLOOR : BARS;
+    setT(x,y,t);
+  }));
+  const c3=S.c3;
+  if(id==="castle" && c3.passage) setT(2,17,DOWN);
+  if(id==="vault" && c3.vault){ setT(9,8,IFLOOR); setT(10,8,IFLOOR); }
+  if(id==="tower1" && c3.t1){ setT(9,2,IFLOOR); setT(10,2,IFLOOR); }
+  if(id==="tower2"){ if(c3.t2bridge) setT(5,9,CARTBR); if(c3.t2rubble) setT(11,2,IFLOOR); if(c3.t2crack) setT(18,13,IFLOOR); }
+  if(id==="tower3" && c3.t3) for(let y=5;y<=10;y++) setT(12,y,IFLOOR);
+  if(id==="tower4" && c3.t4a) for(let x=11;x<=13;x++) setT(x,7,IFLOOR);
+}
+function wallFace(x,y){ const t=at(x,y); return (t===IWALL||t===CRACK) && y<MH-1 && at(x,y+1)!==IWALL && at(x,y+1)!==CRACK; }
+function autoTorches(){
+  for(let y=0;y<MH-1;y++) for(let x=0;x<MW;x++){
+    if(!wallFace(x,y) || CHR[y][x]==="w") continue;
+    const h=hash(x*11,y*7); if(h<.8) continue;
+    if(props.some(p=>p.type==="torch" && Math.abs(p.tx-x)<3 && p.ty===y)) continue;
+    props.push({type:"torch", tx:x, ty:y, x:(x+.5)*TILE, y:(y+1)*TILE-1});
+  }
+}
+const CASTLE_TORCHES=[[3,4],[11,4],[20,4],[28,4],[13,0],[18,0],[11,18],[20,18],[9,4],[22,4]];
+function spawnCastle(){
+  orcs=[]; npcs=[]; props=[];
+  if(S.stage>=16) npcs.push({id:"princess", name:"Princess Elowen", img:"maiden", h:62, x:18.7*TILE, y:6.7*TILE});
+  props.push({type:"throne", x:16*TILE, y:6.98*TILE});
+  props.push({type:"crownstone", x:16*TILE, y:2.98*TILE});
+  props.push({type:"bed", x:2*TILE, y:7.95*TILE});
+  props.push({type:"rack", x:30.5*TILE, y:7.95*TILE});
+  props.push({type:"trophy", x:29*TILE, y:16.98*TILE});
+  props.push({type:"shelf", x:2.5*TILE, y:17.98*TILE});
+  [[28.5,7.95],[29.5,9.95]].forEach(([x,y])=>props.push({type:"dummy", x:x*TILE, y:y*TILE, hits:0, hitT:0, wob:0}));
+  [[9,10.6],[9,12.6],[23,10.6],[23,12.6]].forEach(([x,y],i)=>props.push({type:"pie", i, x:x*TILE, y:y*TILE}));
+  [[11,8],[20,8],[11,14],[20,14]].forEach(([x,y])=>props.push({type:"pillar", x:(x+.5)*TILE, y:(y+1)*TILE-2}));
+  CASTLE_TORCHES.forEach(([x,y])=>{ if(wallFace(x,y)) props.push({type:"torch", tx:x, ty:y, x:(x+.5)*TILE, y:(y+1)*TILE-1}); });
+}
+const VAULT_STATUES=[[5,2],[7,4],[12,5]], VAULT_PLATES=[[13,2],[3,4],[2,7]];
+function spawnVault(){
+  orcs=[]; npcs=[]; props=[];
+  const pos = S.c3.vault ? VAULT_PLATES : VAULT_STATUES;
+  pos.forEach(([x,y],i)=>props.push({type:"statue", i, tx:x, ty:y, x:(x+.5)*TILE, y:(y+1)*TILE-4, mv:null}));
+  rebuildOcc();
+  props.push({type:"vlever", x:3.5*TILE, y:1.9*TILE});
+  props.push({type:"vchest", x:9*TILE, y:10.95*TILE});
+  autoTorches();
+}
+function rebuildOcc(){ occ=new Set(props.filter(p=>p.type==="statue").map(p=>p.tx+","+p.ty)); }
+const TOWER_ORCS = {
+  tower2:[["t2a","bow",17,3.6],["t2b","axe",7,7.4],["t2c","axe",12,13.4]],
+  tower3:[["t3a","bow",6,2.6],["t3b","bow",18,2.6],["t3c","axe",17,13.4]],
+  tower4:[["t4a","club",7,17.4],["t4b","axe",17,17.4],["t4c","bow",7,4.4],["t4d","axe",17,5.4]]
+};
+function spawnTower(id){
+  npcs=[]; props=[]; orcs=[];
+  (TOWER_ORCS[id]||[]).filter(s=>!S.beaten.includes(s[0])).forEach(s=>orcs.push(mkOrc(s)));
+  for(let y=0;y<MH;y++) for(let x=0;x<MW;x++) if(CHR[y][x]==="P" && id!=="tower1"||CHR[y][x]==="P" && id==="tower1") props.push({type:"pillar", x:(x+.5)*TILE, y:(y+1)*TILE-2, tower:true});
+  if(id==="tower1"){ props.push({type:"banner", i:9, x:3.5*TILE, y:12.6*TILE}); towerWave = S.c3.t1 ? null : {n:0, live:false}; }
+  if(id==="tower2"){
+    if(!S.c3.t2bridge) props.push(mkCart(5,14,"A"));
+    props.push(S.c3.t2rubble ? mkCart(11,3,"B") : mkCart(3,5,"B"));
+    props.push({type:"lever", x:13.5*TILE, y:7.2*TILE});
+    props.push({type:"hchest", x:20.5*TILE, y:14.4*TILE});
+  }
+  if(id==="tower3"){
+    props.push({type:"banner", i:9, x:2.5*TILE, y:14.6*TILE});
+    [["M1",4.5,8.75],["M2",12.5,7.75],["M3",20.5,8.75]].forEach(([gid,x,y])=>props.push({type:"glow", gid, x:x*TILE, y:y*TILE, lit:S.c3.t3?999:0}));
+  }
+  if(id==="tower4"){
+    props.push({type:"banner", i:9, x:4.5*TILE, y:18.4*TILE});
+    if(!S.c3.t4a) [10,14].forEach((x,i)=>props.push({type:"sentinel", i, x:(x+.5)*TILE, y:7.98*TILE, t:.6+i*.55, alive:true}));
+    props.push({type:"rune", x:6.5*TILE, y:4.6*TILE});
+  }
+  if(id==="tower5"){
+    props.push({type:"bell", x:13*TILE, y:3.2*TILE, hp: S.c3.bell?0:3, ring:0});
+    if(S.c3.bell && S.pieces<4) props.push({type:"piece4", x:13*TILE, y:5.2*TILE});
+    if(!S.c3.boss) makeGrim();
+  }
+  autoTorches();
+}
+Object.assign(AREA_DEF, {
+  castle:{w:32,h:24, build:()=>buildIndoor("castle"), spawn:spawnCastle, at:[16,21.6], fy:-1, back:[32.5,50.55], backFy:1, horse:[29.4,41.7], intro:"Clovervale Castle. Rest in the bedroom (west wing), train on the dummies (east wing) and grab a pie from the feast tables."},
+  vault:{w:16,h:14, build:()=>buildIndoor("vault"), spawn:spawnVault, at:[1.5,2.6], fy:1, back:[32.5,50.55], backFy:1, horse:[29.4,41.7], intro:"The Royal Vault. Walk into a statue to push it. Push all three onto the glowing plates. Stuck? Pull the lever to reset."},
+  tower1:{w:22,h:15, build:()=>buildIndoor("tower1"), spawn:()=>spawnTower("tower1"), at:[10,12.7], fy:-1, back:[58.5,10.45], backFy:1, horse:[56.6,10.6], intro:"The Dark Tower. Every floor tests a different knight. Use the banner to switch."},
+  tower2:{w:24,h:18, build:()=>buildIndoor("tower2"), spawn:()=>spawnTower("tower2"), at:[11.5,15.9], fy:-1, back:[58.5,10.45], backFy:1, horse:[56.6,10.6], intro:"The Cart Works. Roll a cart into the pit, then set the lever so the upper cart smashes the rubble."},
+  tower3:{w:24,h:18, build:()=>buildIndoor("tower3"), spawn:()=>spawnTower("tower3"), at:[12.5,15.3], fy:-1, back:[58.5,10.45], backFy:1, horse:[56.6,10.6], intro:"The Moon Gallery. Three moon crystals float out of sword reach. Only magic can wake them."},
+  tower4:{w:24,h:20, build:()=>buildIndoor("tower4"), spawn:()=>spawnTower("tower4"), at:[12.5,17.8], fy:-1, back:[58.5,10.45], backFy:1, horse:[56.6,10.6], intro:"The Sentinel Hall. Magic bolts pass straight through shields. Only the Blue Knight's Shield Guard bounces them back."},
+  tower5:{w:26,h:20, build:()=>buildIndoor("tower5"), spawn:()=>spawnTower("tower5"), at:[13.5,17.6], fy:-1, back:[58.5,10.45], backFy:1, horse:[56.6,10.6], intro:"The Bell Chamber."}
+});
+const STAIRS = {
+  castle:{down:["vault",[1.5,2.6]]},
+  vault:{up:["castle",[2.5,16.2]]},
+  tower1:{up:["tower2",[11.5,15.9]]},
+  tower2:{down:["tower1",[10,3.6]], up:["tower3",[12.5,15.3]]},
+  tower3:{down:["tower2",[11.5,3.6]], up:["tower4",[12.5,17.8]]},
+  tower4:{down:["tower3",[12.5,2.6]], up:["tower5",[13.5,17.6]]},
+  tower5:{down:["tower4",[12.5,3.6]]}
+};
+function towerFloor(){ return AREA.startsWith("tower") ? +AREA.slice(5) : 0; }
+
+/* ---------- indoor painter ---------- */
+const PAL = {
+  castle:{top:"#4a3f37", face:"#bba98c", line:"#9d8a71", f1:"#dccaa6", f2:"#d4c09b", grout:"#c3ae89", carpet:"#a3302b", trim:"#d9a441", dais:"#c8ae84", win:"#a8d8f4", wood:"#8a5a34", wood2:"#a06c42"},
+  vault:{top:"#1d212b", face:"#666d7c", line:"#4f5563", f1:"#82878f", f2:"#7b808a", grout:"#6d727c", carpet:"#7a2a2a", trim:"#c9a85a", dais:"#8a8f99", win:"#4a6080", wood:"#6e4a2c", wood2:"#8a6040"},
+  tower:{top:"#130d1f", face:"#4d3f6b", line:"#392e52", f1:"#3f3758", f2:"#3a3251", grout:"#2f2843", carpet:"#5b2a78", trim:"#c9a3ff", dais:"#4a4166", win:"#2a1f4a", wood:"#5a3a22", wood2:"#6e4a2c"}
+};
+const pal = () => AREA.startsWith("tower") ? PAL.tower : PAL[AREA];
+function paintIndoor(x0,y0,x1,y1){
+  const c=sctx, p=pal();
+  x0=clamp(x0,0,MW-1); y0=clamp(y0,0,MH-1); x1=clamp(x1,0,MW-1); y1=clamp(y1,0,MH-1);
+  c.save(); c.beginPath(); c.rect(x0*TILE,y0*TILE,(x1-x0+1)*TILE,(y1-y0+1)*TILE); c.clip();
+  const ax=Math.max(0,x0-1), ay=Math.max(0,y0-1), bx=Math.min(MW-1,x1+1), by=Math.min(MH-1,y1+1);
+  const each = fn => { for(let y=ay;y<=by;y++) for(let x=ax;x<=bx;x++) fn(x,y,at(x,y),x*TILE,y*TILE,CHR[y][x]); };
+  const wallish = t => t===IWALL||t===CRACK;
+  const voidish = t => t===VOID||t===PIT;
+  each((x,y,t,X,Y)=>{ if(wallish(t)||voidish(t)) return; c.fillStyle=(x+y)%2?p.f1:p.f2; c.fillRect(X,Y,TILE,TILE); c.strokeStyle=p.grout; c.lineWidth=1.5; c.strokeRect(X+.75,Y+.75,TILE-1.5,TILE-1.5); });
+  each((x,y,t,X,Y)=>{ if(t!==CARPET) return; c.fillStyle=p.carpet; c.fillRect(X,Y,TILE,TILE); c.fillStyle=p.trim;
+    if(at(x-1,y)!==CARPET) c.fillRect(X+3,Y,3,TILE); if(at(x+1,y)!==CARPET) c.fillRect(X+TILE-6,Y,3,TILE);
+    if(hash(x,y)>.0 && (x+y)%3===0){ c.globalAlpha=.25; c.beginPath(); c.arc(X+TILE/2,Y+TILE/2,6,0,7); c.fill(); c.globalAlpha=1; } });
+  each((x,y,t,X,Y)=>{ if(t!==DAIS && !(CHR[y][x]==="h")) return; c.fillStyle=p.dais; c.fillRect(X,Y,TILE,TILE); c.fillStyle="#00000018"; c.fillRect(X,Y,TILE,2);
+    if(at(x,y+1)!==DAIS && CHR[y+1] && CHR[y+1][x]!=="h"){ c.fillStyle="#00000030"; c.fillRect(X,Y+TILE-6,TILE,6); c.fillStyle="#ffffff30"; c.fillRect(X,Y+TILE-8,TILE,2); } });
+  each((x,y,t,X,Y)=>{ if(t!==PLATE) return; c.fillStyle="#5b5140"; c.beginPath(); c.arc(X+TILE/2,Y+TILE/2,15,0,7); c.fill(); c.strokeStyle=p.trim; c.lineWidth=3; c.beginPath(); c.arc(X+TILE/2,Y+TILE/2,13,0,7); c.stroke(); c.fillStyle="#f4d27a"; c.beginPath(); c.arc(X+TILE/2,Y+TILE/2,4,0,7); c.fill(); });
+  each((x,y,t,X,Y)=>{ if(!voidish(t)) return; c.fillStyle="#07050c"; c.fillRect(X,Y,TILE,TILE);
+    for(let k=0;k<3;k++){ const h=hash(x*5+k,y*3+k); if(h>.55){ c.fillStyle=`rgba(220,210,255,${.3+h*.5})`; c.fillRect(X+hash(y+k,x)*TILE, Y+hash(x+k,y+1)*TILE, 2, 2); } }
+    if(!voidish(at(x,y-1)) && !wallish(at(x,y-1))){ c.fillStyle=p.grout; c.fillRect(X,Y,TILE,10); c.fillStyle="#00000060"; c.fillRect(X,Y+10,TILE,6); } });
+  each((x,y,t,X,Y)=>{ if(t!==CARTBR) return; c.fillStyle="#6e4a2c"; c.fillRect(X+3,Y+4,TILE-6,TILE-8); c.fillStyle="#3c3f44"; c.fillRect(X+3,Y+10,TILE-6,4); c.fillRect(X+3,Y+26,TILE-6,4); });
+  const railish = t => t===RAIL||t===PIT||t===RUBBLE||t===CARTBR;
+  each((x,y,t,X,Y)=>{ if(t!==RAIL) return; const px=X+TILE/2, py=Y+TILE/2, hz=railish(at(x-1,y))||railish(at(x+1,y)), vt=railish(at(x,y-1))||railish(at(x,y+1));
+    c.fillStyle=p.wood; if(hz) for(let k=0;k<4;k++) c.fillRect(X+k*10+2,py-12,6,24); if(vt) for(let k=0;k<4;k++) c.fillRect(px-12,Y+k*10+2,24,6);
+    c.fillStyle="#a3acb4"; if(hz){ c.fillRect(X,py-9,TILE,3); c.fillRect(X,py+6,TILE,3); } if(vt){ c.fillRect(px-9,Y,3,TILE); c.fillRect(px+6,Y,3,TILE); } });
+  each((x,y,t,X,Y)=>{ if(t!==RUBBLE) return; const px=X+TILE/2, py=Y+TILE/2; [[-10,6,12],[8,8,13],[0,-6,12],[-12,-8,8],[12,-8,9]].forEach(([dx,dy,r])=>{ blob(c,px+dx,py+dy,r,"#5d5270"); blob(c,px+dx-r*.3,py+dy-r*.3,r*.4,"#7d7290"); }); });
+  each((x,y,t,X,Y)=>{ if(t!==UP && t!==DOWN && t!==EXIT) return;
+    if(t===EXIT){ c.fillStyle="#2a1d12"; c.fillRect(X,Y,TILE,TILE); const g=c.createLinearGradient(0,Y,0,Y+TILE); g.addColorStop(0,"rgba(255,230,170,.0)"); g.addColorStop(1,"rgba(255,230,170,.55)"); c.fillStyle=g; c.fillRect(X,Y,TILE,TILE); return; }
+    for(let k=0;k<5;k++){ const sh = t===UP ? 1-k*.12 : .45+k*.1; c.fillStyle=`rgba(${t===UP?"255,245,220":"0,0,0"},${t===UP?.12+k*.06:.25+k*.1})`; c.fillRect(X+2,Y+k*8,TILE-4,7); }
+    c.fillStyle=t===UP?"#f2ead8":"#e9b649"; c.beginPath(); const ax2=X+TILE/2, ay2=Y+TILE/2; if(t===UP){ c.moveTo(ax2,ay2-9); c.lineTo(ax2+8,ay2+3); c.lineTo(ax2-8,ay2+3); } else { c.moveTo(ax2,ay2+9); c.lineTo(ax2+8,ay2-3); c.lineTo(ax2-8,ay2-3); } c.closePath(); c.fill(); });
+  each((x,y,t,X,Y,ch)=>{ if(ch!=="t") return; c.fillStyle="#00000030"; c.fillRect(X+2,Y+6,TILE-2,TILE);
+    c.fillStyle=p.wood2; c.fillRect(X,Y+2,TILE,TILE-6); c.fillStyle="#f1e6c9"; c.fillRect(X+6,Y+2,TILE-12,TILE-6);
+    if(CHR[y-1] && CHR[y-1][x]!=="t"){ c.fillStyle=p.wood; c.fillRect(X,Y+2,TILE,5); }
+    if(!CHR[y+1] || CHR[y+1][x]!=="t"){ c.fillStyle=p.wood; c.fillRect(X,Y+TILE-8,TILE,6); c.fillRect(X+2,Y+TILE-2,5,8); c.fillRect(X+TILE-7,Y+TILE-2,5,8); }
+    if(hash(x,y)>.45){ blob(c,X+12+hash(y,x)*14,Y+16,5,"#e2b06a"); } if(hash(y*3,x)>.6){ c.fillStyle="#c9a85a"; c.fillRect(X+22,Y+8,6,10); } });
+  each((x,y,t,X,Y,ch)=>{ if(ch!=="b" || (CHR[y][x-1]==="b") || (CHR[y-1] && CHR[y-1][x]==="b")) return;
+    c.fillStyle="#00000030"; c.fillRect(X+4,Y+6,TILE*2,TILE*2); c.fillStyle="#6e4728"; c.fillRect(X,Y,TILE*2,TILE*2-4); c.fillStyle="#f4ecd8"; c.fillRect(X+5,Y+6,TILE*2-10,22);
+    c.fillStyle="#3d6fb8"; c.fillRect(X+4,Y+26,TILE*2-8,TILE*2-34); c.fillStyle="#e9b649"; c.fillRect(X+4,Y+26,TILE*2-8,4); c.fillStyle="#8a5a34"; c.fillRect(X,Y-10,TILE*2,12); });
+  each((x,y,t,X,Y,ch)=>{ if(!wallish(t)) return;
+    if(wallFace(x,y)){ const fy=Y+TILE*.28; c.fillStyle=p.top; c.fillRect(X,Y,TILE,TILE*.28); c.fillStyle=p.face; c.fillRect(X,fy,TILE,TILE-TILE*.28);
+      c.strokeStyle=p.line; c.lineWidth=1.5; for(let r=0;r<3;r++){ const yy=fy+r*10; c.beginPath(); c.moveTo(X,yy); c.lineTo(X+TILE,yy); c.stroke(); const off=(r%2)*10; for(let k=0;k<3;k++){ c.beginPath(); c.moveTo(X+off+k*20,yy); c.lineTo(X+off+k*20,yy+10); c.stroke(); } }
+      c.fillStyle="#00000040"; c.fillRect(X,Y+TILE-3,TILE,3);
+      if(ch==="w"){ c.fillStyle="#2a2018"; c.beginPath(); c.moveTo(X+9,Y+TILE-5); c.lineTo(X+9,fy+10); c.arc(X+TILE/2,fy+10,11,Math.PI,0); c.lineTo(X+31,Y+TILE-5); c.closePath(); c.fill();
+        c.fillStyle=p.win; c.beginPath(); c.moveTo(X+12,Y+TILE-7); c.lineTo(X+12,fy+10); c.arc(X+TILE/2,fy+10,8,Math.PI,0); c.lineTo(X+28,Y+TILE-7); c.closePath(); c.fill();
+        c.strokeStyle="#2a2018"; c.lineWidth=2; c.beginPath(); c.moveTo(X+TILE/2,fy+2); c.lineTo(X+TILE/2,Y+TILE-7); c.moveTo(X+12,fy+16); c.lineTo(X+28,fy+16); c.stroke(); }
+      else if(AREA==="castle" && hash(x*3,y*5)>.62 && t===IWALL){ c.fillStyle=hash(x,y)>.5?"#2f5fa8":"#a3302b"; c.beginPath(); c.moveTo(X+10,fy+2); c.lineTo(X+30,fy+2); c.lineTo(X+30,Y+TILE-2); c.lineTo(X+20,Y+TILE-8); c.lineTo(X+10,Y+TILE-2); c.closePath(); c.fill(); c.fillStyle="#e9b649"; c.fillRect(X+15,fy+10,10,3); }
+      if(t===CRACK){ c.strokeStyle="#120c1c"; c.lineWidth=2.6; c.beginPath(); c.moveTo(X+8,fy+4); c.lineTo(X+18,fy+14); c.lineTo(X+12,fy+22); c.moveTo(X+18,fy+14); c.lineTo(X+32,fy+10); c.stroke(); }
+    } else { c.fillStyle=p.top; c.fillRect(X,Y,TILE,TILE); c.fillStyle="#ffffff08"; if(hash(x,y)>.6) c.fillRect(X+6,Y+8,10,6); }
+  });
+  each((x,y,t,X,Y)=>{ if(t!==BARS) return; c.fillStyle="#00000030"; c.fillRect(X,Y+TILE-8,TILE,8); c.fillStyle="#3a3d42"; c.fillRect(X,Y+4,TILE,5); c.fillRect(X,Y+TILE-10,TILE,5);
+    for(let k=0;k<4;k++){ c.fillStyle="#5e6268"; c.fillRect(X+4+k*10,Y-6,5,TILE+2); c.fillStyle="#8a9098"; c.fillRect(X+4+k*10,Y-6,2,TILE+2); }
+    if(AREA==="tower4" && CHR[y][x]==="r"){ c.fillStyle="rgba(150,230,140,.5)"; c.beginPath(); c.arc(X+TILE/2,Y+TILE/2,8,0,7); c.fill(); } });
+  c.restore();
+}
+
+/* ---------- statue pushing (vault) ---------- */
+function updatePush(dt){
+  props.forEach(s=>{ if(s.type==="statue" && s.mv){ s.mv.t+=dt; const k=Math.min(1,s.mv.t/.2); s.x=(s.mv.fx+(s.tx-s.mv.fx)*k+.5)*TILE; s.y=(s.mv.fy+(s.ty-s.mv.fy)*k+1)*TILE-4; if(k>=1) s.mv=null; } });
+  if(S.c3.vault || !P.moving) { pushT=0; return; }
+  const dir = Math.abs(P.fx)>Math.abs(P.fy) ? [Math.sign(P.fx),0] : [0,Math.sign(P.fy)];
+  const fx=Math.floor((P.x+dir[0]*(P.r+8))/TILE), fy=Math.floor((P.y+dir[1]*(P.r+6))/TILE);
+  const st=props.find(p=>p.type==="statue" && p.tx===fx && p.ty===fy && !p.mv);
+  if(!st){ pushT=0; return; }
+  if(!pushDir || pushDir[0]!==dir[0] || pushDir[1]!==dir[1]){ pushDir=dir; pushT=0; }
+  pushT+=dt; if(pushT<.22) return; pushT=0;
+  const nx=st.tx+dir[0], ny=st.ty+dir[1], t=at(nx,ny);
+  if(SOLID.has(t) || occ.has(nx+","+ny) || t===UP){ floatText(st.x,st.y-70,"Won't budge","#cfd4d8"); return; }
+  st.mv={fx:st.tx, fy:st.ty, t:0}; st.tx=nx; st.ty=ny; rebuildOcc(); burst(st.x,st.y-6,"#b6bcc1",6,70);
+  const onPlates = VAULT_PLATES.filter(([x,y])=>occ.has(x+","+y)).length;
+  if(at(nx,ny)===PLATE) floatText((nx+.5)*TILE,(ny)*TILE-30,`${onPlates} of 3 plates`,"#f4d27a",true);
+  if(onPlates===3){ S.c3.vault=true; setT(9,8,IFLOOR); setT(10,8,IFLOOR); repaintTile(9,8); repaintTile(10,8); shake=.4; save(); toast("Click, clunk... the iron gate rises! The vault is open.",4200); }
+}
+function resetStatues(){
+  if(S.c3.vault) return say("Lever","The gate is already open. No need to reset.");
+  props.filter(p=>p.type==="statue").forEach(s=>{ const [x,y]=VAULT_STATUES[s.i]; s.tx=x; s.ty=y; s.x=(x+.5)*TILE; s.y=(y+1)*TILE-4; s.mv=null; });
+  rebuildOcc(); burst(P.x,P.y-40,"#e9b649",10,100); toast("The statues slide back to where they started.",2600);
+}
+
+/* ---------- tower logic ---------- */
+function updateTower(dt){
+  if(AREA==="tower1" && towerWave && !S.c3.t1){
+    if(!towerWave.live && P.y<11*TILE){ towerWave.live=true; towerWave.n=1; spawnWave(1); toast("Ambush! Defeat every orc to raise the bars.",3000); }
+    if(towerWave.live && !orcs.some(o=>o.state!=="dizzy" && o.state!=="flee")){
+      if(towerWave.n===1){ towerWave.n=2; spawnWave(2); toast("Here comes the second wave!",2400); }
+      else { S.c3.t1=true; towerWave=null; setT(9,2,IFLOOR); setT(10,2,IFLOOR); repaintTile(9,2); repaintTile(10,2); shake=.3; save(); toast("The iron bars grind open. Up the stairs!",3200); }
+    }
+  }
+  if(AREA==="tower3") props.forEach(p=>{ if(p.type==="glow" && p.lit>0 && p.lit<999){ p.lit-=dt; if(p.lit<=0){ p.lit=0; floatText(p.x,p.y-50,"faded","#9ab"); } } });
+  if(AREA==="tower4"){
+    const inHall = P.y>7.6*TILE && P.y<15*TILE && P.x>9.6*TILE && P.x<15.4*TILE;
+    props.forEach(s=>{ if(s.type!=="sentinel" || !s.alive) return; s.t-=dt; s.glow=Math.max(0,(s.glow||0)-dt);
+      if(s.t<=0 && inHall){ s.t=1.15*D().cd; s.glow=.25; const sx=s.x, sy=s.y+28, dx=P.x-sx, dy=P.y-sy, d=Math.hypot(dx,dy)||1; arrows.push({x:sx,y:sy,vx:dx/d*230,vy:dy/d*230,life:3,own:"orc",magic:true}); } });
+  }
+  if(AREA==="tower5") updateGrim(dt);
+}
+function spawnWave(n){
+  const hard = (S.diff||"normal")==="hard";
+  const W1=[["w1a","axe",4,4.5],["w1b","axe",17,4.5],["w1c","bow",10.5,3.7]];
+  const W2=[["w2a","club",10.5,4.2],["w2b","axe",3,6],["w2c","axe",18,6],["w2d","bow",17,3.7],["w2e","bow",4,3.7]];
+  (n===1?W1:W2).slice(0, n===1?(hard?3:3):(hard?5:4)).forEach(s=>{ const o=mkOrc(s); o.state="chase"; orcs.push(o); burst(o.x,o.y-30,"#9a5ce0",16,140); });
+}
+function solveMoon(){
+  S.c3.t3=true; props.forEach(q=>{ if(q.type==="glow") q.lit=999; });
+  for(let y=5;y<=10;y++){ setT(12,y,IFLOOR); burst(12.5*TILE,(y+.5)*TILE,"#d8e8ff",12,140,4); }
+  paintStatic(10,4,14,11); paintMini(); shake=.35; save(); toast("The three crystals sing together. A bridge of moonlight forms across the gap!",4500);
+}
+function openRune(){
+  if(S.c3.t4b) return; S.c3.t4b=true; setT(12,2,IFLOOR); repaintTile(12,2); shake=.3; burst(6.5*TILE,4.2*TILE,"#a5e08a",20,150,4); save();
+  toast("The rune flares green. The sealed door to the stairs slides open!",3600);
+}
+function killSentinel(s){
+  s.alive=false; burst(s.x,s.y-30,"#9cc8ff",26,180,4); floatText(s.x,s.y-60,"Sentinel down!","#9cc8ff",true); shake=.25;
+  if(props.every(p=>p.type!=="sentinel" || !p.alive)){ S.c3.t4a=true; for(let x=11;x<=13;x++) setT(x,7,IFLOOR); repaintTile(12,7); save(); toast("Both sentinels are broken. The bars drop away.",3400); }
+}
+
+/* ---------- bosses ---------- */
+function bossBar(){
+  const el=$("#bossbar"); const show = boss && boss.active && boss.state!=="weak" && boss.state!=="beaten";
+  document.body.classList.toggle("boss", !!show);
+  if(!show){ if(!el.hidden) el.hidden=true; return; }
+  el.hidden=false; const pct=Math.max(0,boss.hp/boss.max*100);
+  const name = boss.name + (boss.shield?" (shielded)":"");
+  if(el._n!==name){ el.querySelector("b").textContent=name; el._n=name; }
+  el.querySelector("i").style.width=pct+"%"; el.classList.toggle("shield", !!boss.shield);
+}
+function makeDragon(){
+  const hp=Math.round(46*D().boss), kh=Math.max(3,Math.round(4*D().boss));
+  boss={kind:"dragon", name:"Ember, under the bell's spell", x:20.5*TILE, y:3.9*TILE, z:0, hp, max:hp, state:"perch", t:0, phase:1, face:1, flash:0, active:false, shield:true, ang:0, k:0};
+  [[9.5,6.6],[31.5,6.6],[21.5,9.7]].forEach(([x,y])=>props.push({type:"knot", x:x*TILE, y:y*TILE, hp:kh, max:kh, flash:0}));
+}
+function dragonSpot(b){
+  for(let i=0;i<20;i++){ const x=rnd(8,32)*TILE, y=rnd(5.2,9.8)*TILE, d=Math.hypot(x-P.x,y-P.y); if(d>150 && d<330){ b.tx=x; b.ty=y; return; } }
+  b.tx=20.5*TILE; b.ty=6*TILE;
+}
+function losClear(x0,y0,x1,y1){ const d=Math.hypot(x1-x0,y1-y0), n=Math.ceil(d/12); for(let i=2;i<n;i++){ const t=tileAtPx(x0+(x1-x0)*i/n, y0+(y1-y0)*i/n); if(t===ROCK||t===CLIFF||t===FURN||t===IWALL) return false; } return true; }
+function dragonAttack(b){
+  const d=Math.hypot(P.x-b.x,P.y-b.y), r=Math.random();
+  if(d>240){ if(r<.55) startBreath(b); else { b.state="barrage"; b.k=b.phase===2?5:3; b.t=.2; } }
+  else { if(r<.45){ b.state="rise"; b.t=.5; } else if(r<.75){ b.state="gust"; b.t=1.3; b.k=.3; } else startBreath(b); }
+}
+function startBreath(b){ b.state="breathWind"; b.tw=.95*D().wind*(b.phase===2?.85:1); b.t=b.tw; b.ang=Math.atan2(P.y-b.y,P.x-b.x); }
+function dragonNext(b){ b.state="move"; b.t=rnd(.7,1.2)*D().cd*(b.phase===2?.7:1); dragonSpot(b); }
+function updateDragon(dt){
+  const b=boss; if(!b || b.kind!=="dragon") return;
+  b.flash=Math.max(0,b.flash-dt); b.t-=dt;
+  props.forEach(k=>{ if(k.type==="knot") k.flash=Math.max(0,k.flash-dt); });
+  b.shield = props.some(p=>p.type==="knot" && p.hp>0);
+  if(b.state==="weak") return;
+  const inArena = P.y<11.3*TILE && P.falling<=0;
+  if(!b.active){ if(inArena){ b.active=true; b.state="roar"; b.t=1.5; shake=.7; burst(b.x,b.y-90,"#ff9a5a",30,200,5);
+      say({name:"Ember the Dragon", img:"dragon"},["The dragon's eyes glow purple. The bell's spell has it. It roars and spreads its wings!","Purple vine knots feed it a magic shield. Cut the three knots first, then strike the dragon. Hide behind rocks from its fire breath."]); } return; }
+  if(!inArena){ b.z=Math.max(0,b.z-200*dt); return; }
+  const dx=P.x-b.x, dy=P.y-b.y, d=Math.hypot(dx,dy)||1; if(Math.abs(dx)>8) b.face = dx>0?1:-1;
+  if(b.z<20 && d<56 && b.state!=="dizzy"){ hurtPlayer({x:b.x,y:b.y},1,true); moveEnt(P,dx/d*30,dy/d*30); }
+  const sp = (b.phase===2?250:195)*D().spd;
+  const toward=(tx,ty,s)=>{ const ex=tx-b.x, ey=ty-b.y, ed=Math.hypot(ex,ey); if(ed<4) return true; const m=Math.min(ed,s*dt); b.x+=ex/ed*m; b.y+=ey/ed*m; return ed<8; };
+  switch(b.state){
+    case "roar": if(b.t<=0) dragonNext(b); break;
+    case "move": b.z=Math.max(0,b.z-150*dt); if(toward(b.tx,b.ty,sp) || b.t<=0) dragonAttack(b); break;
+    case "breathWind": if(b.t > b.tw*.35) b.ang=Math.atan2(P.y-b.y,P.x-b.x); if(b.t<=0){ b.state="breath"; b.t=.75; } break;
+    case "breath": {
+      for(let i=0;i<4;i++){ const a=b.ang+rnd(-.4,.4), r=rnd(30,330); parts.push({x:b.x+Math.cos(a)*r, y:b.y+Math.sin(a)*r-10, vx:Math.cos(a)*60, vy:Math.sin(a)*60-30, life:rnd(.25,.5), max:.5, color:Math.random()<.5?"#ff8a3a":"#ffd27a", size:rnd(4,8)}); }
+      const pa=Math.atan2(dy,dx); let da=Math.abs(pa-b.ang); if(da>Math.PI) da=Math.PI*2-da;
+      if(d<335 && da<.42 && losClear(b.x,b.y,P.x,P.y)) hurtPlayer({x:b.x,y:b.y},dmgOf(1),true);
+      if(b.t<=0) dragonNext(b); break; }
+    case "barrage": if(b.t<=0){ fires.push({x:P.x+rnd(-14,14)+P.fx*30, y:P.y+rnd(-10,10)+P.fy*20, t:.95, r:46}); b.k--; b.t=.38*(b.phase===2?.8:1); if(b.k<=0){ b.state="wait"; b.t=.9; } } break;
+    case "wait": if(b.t<=0) dragonNext(b); break;
+    case "rise": b.z=Math.min(130,b.z+300*dt); if(b.t<=0){ b.state="hover"; b.t=.8*D().wind; } break;
+    case "hover": b.z=130; toward(P.x,P.y,330*D().spd); if(b.t<=0){ b.state="drop"; b.t=.34; b.lx=P.x; b.ly=P.y; } break;
+    case "drop": { toward(b.lx,b.ly,600); b.z=Math.max(0,b.z-420*dt);
+      if(b.t<=0){ b.z=0; shake=.5; rings.push({x:b.x,y:b.y,r:20,max:120,life:.35,col:"#ffcf9a"}); burst(b.x,b.y,"#a39782",30,200,5);
+        const dd=Math.hypot(P.x-b.x,P.y-b.y); if(dd<64) hurtPlayer({x:b.x,y:b.y},dmgOf(2),true); else if(dd<120) hurtPlayer({x:b.x,y:b.y},1,true);
+        b.state="dizzy"; b.t=1.9; floatText(b.x,b.y-170,"Dizzy! Strike now!","#f2d24a",true); } break; }
+    case "dizzy": if(b.t<=0) dragonNext(b); break;
+    case "gust": { const f = P.bubble>0 ? 0 : P.blocking ? .2 : 1; moveEnt(P, dx/d*200*f*dt, dy/d*200*f*dt);
+      b.k-=dt; if(b.k<=0){ b.k=.42; const a=Math.atan2(dy,dx)+rnd(-.25,.25); arrows.push({x:b.x,y:b.y-10,vx:Math.cos(a)*300,vy:Math.sin(a)*300,life:1.6,own:"orc",spark:true}); }
+      for(let i=0;i<2;i++) parts.push({x:b.x+rnd(-60,60), y:b.y-rnd(20,90), vx:dx/d*260, vy:dy/d*260, life:.4, max:.4, color:"rgba(235,245,255,.8)", size:3});
+      if(b.t<=0) dragonNext(b); break; }
+  }
+  b.x=clamp(b.x,7.5*TILE,33*TILE); b.y=clamp(b.y,3.8*TILE,10.2*TILE);
+}
+function makeGrim(){ const hp=Math.round(64*D().boss); boss={kind:"grim", name:"Grimtusk the Bell-Ringer", x:13*TILE, y:7*TILE, z:0, r:22, hp, max:hp, state:"wait", t:0, phase:1, face:1, flash:0, active:false, summons:0, combo:0}; shocks=[]; }
+function grimChoose(b){
+  const d=Math.hypot(P.x-b.x,P.y-b.y), f=b.hp/b.max;
+  if((f<=.66 && b.summons<1) || (f<=.33 && b.summons<2)){ b.state="summon"; b.t=1.0; return; }
+  const r=Math.random();
+  if(d<110 && r<.5){ b.state="slamWind"; b.tw=.85*D().wind; b.t=b.tw; b.combo=b.phase===2?2:1; aimSlam(b); return; }
+  if(r<.42 && d>120){ b.state="chargeWind"; b.tw=.9*D().wind; b.t=b.tw; return; }
+  if(r<.72){ b.state="toBell"; b.t=3; return; }
+  b.state="walk"; b.t=rnd(1.2,2.0);
+}
+function aimSlam(b){ const dx=P.x-b.x, dy=P.y-b.y, d=Math.hypot(dx,dy)||1; b.sx=b.x+dx/d*Math.min(60,d); b.sy=b.y+dy/d*Math.min(50,d); b.sr=92; }
+function updateGrim(dt){
+  const b=boss; if(!b || b.kind!=="grim") { updateShocks(dt); return; }
+  b.flash=Math.max(0,b.flash-dt); b.t-=dt; updateShocks(dt);
+  if(b.state==="beaten") return;
+  if(!b.active){ if(P.y<16*TILE){ b.active=true; b.state="intro"; b.t=1.3; shake=.6;
+      say({name:"Grimtusk the Bell-Ringer", img:"orc_brute"},["\"Who climbs MY tower? This bell makes the whole kingdom tremble, and I'll never stop ringing it!\"","Grimtusk swings his huge club. When he rings the bell, hide behind a pillar or block facing the bell. When he charges and hits a wall, he's dizzy: strike him!"]); } return; }
+  const dx=P.x-b.x, dy=P.y-b.y, d=Math.hypot(dx,dy)||1; if(Math.abs(dx)>6) b.face=dx>0?1:-1;
+  const sp=(b.phase===2?118:92)*D().spd;
+  const walkTo=(tx,ty,s)=>{ const ex=tx-b.x, ey=ty-b.y, ed=Math.hypot(ex,ey); if(ed<6) return true; moveEnt(b,ex/ed*s*dt,ey/ed*s*dt); return false; };
+  switch(b.state){
+    case "intro": if(b.t<=0){ b.state="walk"; b.t=1.2; } break;
+    case "walk": walkTo(P.x,P.y,sp); if(d<92){ b.state="slamWind"; b.tw=.85*D().wind; b.t=b.tw; b.combo=b.phase===2?2:1; aimSlam(b); } else if(b.t<=0) grimChoose(b); break;
+    case "slamWind": if(b.t<=0){ shake=.3; rings.push({x:b.sx,y:b.sy,r:20,max:b.sr,life:.3,col:"#ffcf9a"}); burst(b.sx,b.sy,"#8a7a9a",18,160,4);
+        if(Math.hypot(P.x-b.sx,P.y-b.sy)<b.sr+6) hurtPlayer({x:b.sx,y:b.sy},dmgOf(2),true);
+        b.combo--; if(b.combo>0){ b.state="slamWind"; b.tw=.55*D().wind; b.t=b.tw; aimSlam(b); } else { b.state="recover"; b.t=.85; } } break;
+    case "recover": if(b.t<=0) grimChoose(b); break;
+    case "chargeWind": b.ang=Math.atan2(dy,dx); if(b.t<=0){ b.state="charge"; b.t=1.6; b.hitP=false; } break;
+    case "charge": { const s=560*D().spd*dt, bump=moveEnt(b,Math.cos(b.ang)*s,Math.sin(b.ang)*s);
+      parts.push({x:b.x+rnd(-14,14), y:b.y, vx:rnd(-40,40), vy:-40, life:.35, max:.35, color:"#8a7a9a", size:4});
+      if(!b.hitP && d<44){ b.hitP=true; hurtPlayer({x:b.x,y:b.y},dmgOf(2),true); }
+      if(bump || b.t<=0){ if(bump){ shake=.45; burst(b.x+Math.cos(b.ang)*26,b.y-30,"#cfc7b5",22,180,4); b.state="stunned"; b.t=1.8; floatText(b.x,b.y-110,"Stunned! Strike now!","#f2d24a",true); } else { b.state="recover"; b.t=.5; } } break; }
+    case "stunned": if(b.t<=0) grimChoose(b); break;
+    case "toBell": if(walkTo(13*TILE,4.6*TILE,sp*1.8) || b.t<=0){ b.state="ring"; b.t=.7; b.k=b.phase===2?3:2; floatText(13*TILE,2*TILE,"BONG!","#e9b649",true); } break;
+    case "ring": if(b.t<=0){ const bell=props.find(p=>p.type==="bell"); if(bell) bell.ring=.6; shocks.push({x:13*TILE, y:3.2*TILE, r:30, spd:250, done:false}); shake=.3; b.k--; b.t=.75; if(b.k<=0){ b.state="walk"; b.t=1.4; } } break;
+    case "summon": if(b.t<=0){ b.summons++; const id="g"+b.summons; [[id+"a","axe",3,10.5],[id+"b",b.summons===2?"club":"bow",22,10.5]].forEach(s=>{ const o=mkOrc(s); o.state=o.kind==="bow"?"cool":"chase"; orcs.push(o); burst(o.x,o.y-30,"#9a5ce0",18,150); });
+        toast("Grimtusk bellows for help! Orcs pour in.",2600); b.state="walk"; b.t=1.5; } break;
+  }
+}
+function updateShocks(dt){
+  for(let i=shocks.length-1;i>=0;i--){ const s=shocks[i]; s.r+=s.spd*dt;
+    const d=Math.hypot(P.x-s.x,P.y-s.y);
+    if(!s.done && Math.abs(d-s.r)<18 && P.falling<=0){ s.done=true;
+      const dx=s.x-P.x, dy=s.y-P.y;
+      if(P.bubble>0){ floatText(P.x,P.y-70,"Guarded","#9cc8ff"); }
+      else if(P.blocking && (dx*P.fx+dy*P.fy)/(d||1) > .2){ floatText(P.x,P.y-70,"Blocked","#9cc8ff"); burst(P.x,P.y-30,"#cfe3ff",8,110); }
+      else if(!losClear(s.x,s.y+40,P.x,P.y)){ floatText(P.x,P.y-70,"Safe behind the pillar","#cfe3ff"); }
+      else hurtPlayer({x:s.x,y:s.y},dmgOf(1),true); }
+    if(s.r>900) shocks.splice(i,1); }
+}
+function hurtBoss(dmg,kind){
+  const b=boss; if(!b || !b.active || b.state==="weak" || b.state==="beaten" || b.z>40) return false;
+  if(b.kind==="dragon" && b.shield){ if(!b.shTold || tNow-b.shTold>2){ b.shTold=tNow; floatText(b.x,b.y-150,"Shielded! Cut the vine knots!","#d8b8ff",true); } burst(b.x,b.y-60,"#b080e8",8,120); return true; }
+  if(b.state==="dizzy"||b.state==="stunned") dmg=Math.ceil(dmg*1.5);
+  b.hp-=dmg; b.flash=.15; floatText(b.x,b.y-(b.kind==="dragon"?150:110),String(dmg),"#fff",true); burst(b.x,b.y-50,"#fff6c8",8,110);
+  if(b.phase===1 && b.hp<=b.max*.5){ b.phase=2;
+    if(b.kind==="dragon"){ let n=0; props.forEach(k=>{ if(k.type==="knot" && n<2){ k.hp=k.max; n++; burst(k.x,k.y-20,"#9a5ce0",20,150,4); } }); b.shield=true; shake=.5; toast("The vines grow back stronger! Cut the knots again.",3200); dragonNext(b); }
+    else { toast("Grimtusk is furious! He's faster now.",2600); shake=.4; }
+  }
+  if(b.hp<=0){ b.hp=0;
+    if(b.kind==="dragon"){ b.state="weak"; b.z=0; fires=[]; arrows=[]; shake=.6; toast("Ember is worn out. Press F next to it to free it with the Crownstone pieces.",5000); }
+    else { b.state="beaten"; shocks=[]; S.c3.boss=true; S.trophies=S.trophies||{}; S.trophies.crown=true; save(); orcs.forEach(o=>{ if(o.state!=="dizzy"&&o.state!=="flee"){ o.state="dizzy"; o.t=1.2; } });
+      say({name:"Grimtusk", img:"orc_brute"},["Grimtusk drops his club and sits down hard. \"My head... that bell has been ringing in my head for weeks. It told me to guard it.\"","\"Make it stop, knight. Please. Hit the bell until it cracks.\""], ()=>toast("Strike the bell three times to silence it.",3500)); }
+  }
+  return true;
+}
+function strikeBell(p){
+  if(!S.c3.boss){ floatText(p.x,p.y-60,"BONG!","#e9b649",true); p.ring=.5; return; }
+  if(S.c3.bell || p.cool>0) return; p.cool=.35; p.hp--; p.ring=.6; shake=.3; burst(p.x,p.y-20,"#e9b649",16,160,4);
+  floatText(p.x,p.y-70, p.hp>0?`Crack! (${3-p.hp}/3)`:"Silenced!","#e9b649",true);
+  if(p.hp<=0){ S.c3.bell=true; save(); props.push({type:"piece4", x:13*TILE, y:5.2*TILE}); burst(13*TILE,4*TILE,"#9fd8ff",40,220,5);
+    say("The Bell",["The bell splits down the middle and falls silent. For the first time in weeks, the tower is quiet.","Something bright drops out of the broken bell: the last piece of the Crownstone!"]); }
+}
+
+/* ---------- interactions & story ---------- */
+function c3Prop(p){
+  const c3=S.c3;
+  if(p.type==="castledoor") return enterArea("castle");
+  if(p.type==="throne") return say("The Throne", S.stage>=21 ? "Princess Elowen's throne. The Crownstone glows above the castle again." : "The royal throne of Clovervale. It stays empty until the Crownstone is whole again.");
+  if(p.type==="bed"){ S.hp=S.maxHp; save(); burst(p.x,p.y-30,"#9fd8ff",16,110); return toast("You take a short nap. Hearts refilled and progress saved.",3000); }
+  if(p.type==="pie"){ if(S.hp>=S.maxHp) return toast("You're full. Save the pie for later.",2200); S.hp=Math.min(S.maxHp,S.hp+2); props.splice(props.indexOf(p),1); burst(p.x,p.y-20,"#e2b06a",12,100); return toast("Delicious berry pie! +2 hearts.",2400); }
+  if(p.type==="rack"){ const names=["","Old Sword","Steel Sword","Copper Runed Sword"]; return say("Weapon Rack",[`Your blade: the ${names[S.sword]} (damage ${S.sword} per hit). Bram can forge better ones.`, "Try your combos on the training dummies. Red's Power Strike hits for 3, and stunned or dizzy bosses take 50% more damage."]); }
+  if(p.type==="trophy"){ const t=S.trophies||{}; const L=[];
+    if(S.race.medal) L.push(`${MEDALS[S.race.medal].n} riding ribbon (best time ${S.race.best.toFixed(1)}s)`);
+    if(t.scale) L.push("A shiny green dragon scale, a gift from Ember"); if(t.crown) L.push("Grimtusk's dented iron crown");
+    L.push(`${S.pieces} of 4 Crownstone pieces recovered`); L.push(`${S.orcsBeaten} orcs sent running`); L.push(`${S.restored.length} of 4 castle projects restored`);
+    return say("Trophy Case", L.map(x=>"• "+x).join("<br>")); }
+  if(p.type==="crownstone"){
+    if(S.stage===20) return finale();
+    return say("The Crownstone Chamber", S.stage>=21 ? "The Crownstone shines, whole again. Its light spills over all of Clovervale." : `An empty golden frame with four slots for the Crownstone pieces. You have ${S.pieces} of 4. When all four are found, they belong here.`); }
+  if(p.type==="shelf"){
+    if(c3.passage) return say("Secret Passage","The bookshelf has swung aside. Stone stairs lead down into the dark.");
+    if(S.stage>=16) return say("Bookshelf","Old books about kings and queens. One spine has a little golden crown on it. Princess Elowen will know what it means.");
+    return say("Bookshelf","Dusty books about the history of Clovervale. One has a little golden crown on its spine, but it won't come off the shelf."); }
+  if(p.type==="vlever") return resetStatues();
+  if(p.type==="vchest"){ if(c3.key) return say("Royal Chest","Empty now."); if(!c3.vault) return say("Royal Chest","Behind the iron gate.");
+    c3.key=true; S.maxHp++; S.hp=S.maxHp; if(S.stage<18) S.stage=18; save(); burst(p.x,p.y-20,"#e9b649",30,180,4);
+    return say("Royal Chest",["Inside: the Royal Key, heavy and cold, with a crown-shaped head.","And the Royal Shield of Clovervale! You gain a heart.", S.team.length<4 ? `The tower gate needs all four knights. Find the ${Object.keys(KNIGHTS).filter(k=>!S.team.includes(k)).map(k=>KNIGHTS[k].name).join(" and ")} waiting by a banner.` : "Now head to the Dark Tower in the far north-east."], ()=>toast("Quest updated: The Dark Tower")); }
+  if(p.type==="hchest"){ if(c3.heart2) return say("Chest","Empty."); if(at(18,13)===CRACK) return; c3.heart2=true; S.maxHp++; S.hp=S.maxHp; save(); burst(p.x,p.y-20,"#ff8a8a",26,170,4); return say("Hidden Chest","A heart crystal! You gain a heart."); }
+  if(p.type==="rune"){ if(S.c3.t4b) return; if(P.sense<=0) return; return openRune(); }
+  if(p.type==="bell") return strikeBell(p);
+  if(p.type==="piece4"){ props.splice(props.indexOf(p),1); S.pieces=4; if(S.stage<20) S.stage=20; save(); burst(p.x,p.y-30,"#9fd8ff",40,220,5);
+    return say({name:"Ember the Dragon", img:"dragon"},["You lift the fourth and final piece of the Crownstone!","A shadow sweeps past the tower window. Ember lands on the ledge. \"The bell is quiet! Climb on, friend. I'll fly you home.\""], ()=>{ goWorld(32.5,50.55,"Ember sets you down at the castle door. Take the last piece to the Crownstone chamber."); }); }
+  if(p.type==="knot") return;
+}
+function goWorld(x,y,msg){
+  stashArea(); useArea("world"); placeNpcs(); boss=null; shocks=[];
+  P.x=x*TILE; P.y=y*TILE; P.falling=0; P.mounted=false; H.x=P.x+50; H.y=P.y; arrows=[]; pickups=[]; parts=[]; floats=[]; rings=[];
+  flyAnim={t:0,d:1.3,done:true,cut:false,x,y,n:""}; if(msg) setTimeout(()=>toast(msg,4200),700); save();
+}
+function towerGate(){
+  const c3=S.c3;
+  if(c3.tower) return;
+  if(S.stage<16) return say("The Dark Tower","The vines around the Dark Tower are as thick as tree trunks. Only Crownstone light could burn through them, and you don't have enough pieces yet.");
+  if(!c3.key) return say("The Dark Tower",["Three Crownstone pieces glow hot in your pouch, enough to burn these vines. But behind them, the tower door is locked with a crown-shaped keyhole.","Princess Elowen might know where the key is. She's in the castle throne room."]);
+  const missing=Object.keys(KNIGHTS).filter(k=>!S.team.includes(k));
+  if(missing.length) return say("The Dark Tower",["The tower gate has four banner hooks, one for each knight of Clovervale. It won't open for fewer.",`Still missing: ${missing.map(k=>KNIGHTS[k].name).join(", ")}. Look for them waiting by the banners around the kingdom.`]);
+  c3.tower=true; if(S.stage<19) S.stage=19;
+  for(let y=0;y<MH;y++) for(let x=50;x<MW;x++) if(at(x,y)===VINE){ setT(x,y,G); if(hash(x,y)>.6) burst((x+.5)*TILE,(y+.5)*TILE,"#ffe08a",8,150,4); }
+  paintStatic(50,0,MW-1,14); paintMini(); shake=.7; save();
+  say("The Dark Tower",["You hold up the three Crownstone pieces. Golden light pours out, and the purple vines shrivel to dust.","Your four knights raise their banners. The Royal Key turns with a heavy clunk, and the tower door swings open."], ()=>toast("The Dark Tower is open! Walk in through the door.",4000));
+}
+function finale(){
+  S.stage=21; S.won=true; S.trophies=S.trophies||{}; save();
+  say({name:"Princess Elowen", img:"maiden"},[
+    "You set the fourth piece into the frame. All four pieces click together, and the Crownstone blazes with golden light.",
+    "The light rises through the castle roof and settles back above Clovervale. Across the kingdom the purple vines wither, and the orcs blink as if waking from a dream.",
+    `"You did it, ${NAME()}! Pony, bridge, mine, marsh, dragon, tower... and our castle, good as new. Clovervale owes you everything."`
+  ], ()=>{
+    mode="chapter"; const mins=Math.max(1,Math.round(S.time/60));
+    showOverlay(`<h1>The <span>End</span></h1>
+      <div class="row" style="gap:2px;align-items:flex-end">${S.team.map(k=>`<img src="${IMG["knight_"+k]}" style="height:96px" alt="">`).join("")}<img src="${IMG.maiden}" style="height:92px" alt=""><img src="${IMG.dragon}" style="height:118px" alt=""><img src="${IMG.wizard}" style="height:96px" alt=""></div>
+      <p>The Crownstone is whole, the bell is silent, and Clovervale is safe. The orcs have calmed down and wander the woods peacefully now.</p>
+      <p style="color:var(--muted)">${mins} minutes played on ${D().n}. ${S.orcsBeaten} orcs sent running. ${S.restored.length} of 4 castle projects restored. ${S.race.medal?MEDALS[S.race.medal].n+" riding ribbon.":"No riding ribbon yet."}</p>
+      <div class="row"><button class="btn gold" data-ov="resume">Keep exploring</button><button class="btn" data-ov="ngplus">New quest on Hard</button><button class="btn" data-ov="title">Back to title</button></div>`);
+  });
+}
+function c3Objective(){
+  const s=S.stage, np=id=>npcs.find(n=>n.id===id), find=t=>props.find(p=>p.type===t);
+  const tileAt=(T)=>{ for(let y=0;y<MH;y++) for(let x=0;x<MW;x++) if(at(x,y)===T) return {x:(x+.5)*TILE,y:(y+.5)*TILE,h:20}; return null; };
+  const door = AREA==="world" ? find("castledoor") : null;
+  if(AREA==="vault"){
+    if(!S.c3.vault){ const free=VAULT_PLATES.find(([x,y])=>!occ.has(x+","+y)); return {t:"Push all three statues onto the glowing plates. Walk into a statue to push it. Stuck? Pull the lever by the stairs to reset.", at: free?{x:(free[0]+.5)*TILE,y:(free[1]+.5)*TILE,h:10}:null}; }
+    if(!S.c3.key) return {t:"The gate is open. Open the royal chest.", at:find("vchest")};
+    return {t:"Head back up the stairs.", at:tileAt(UP)};
+  }
+  if(AREA==="castle"){
+    if(s===16) return {t:"Talk to Princess Elowen beside the throne.", at:np("princess")};
+    if(s===17) return {t:"The secret passage is behind the bookshelf in the west wing.", at:find("shelf")};
+    if(s===20) return {t:"Place the last piece in the Crownstone chamber behind the throne.", at:find("crownstone")};
+    if(s===18||s===19) return {t: s===18 && S.team.length<4 ? "Head outside and recruit the rest of your knights." : "Head outside to the Dark Tower.", at:tileAt(EXIT)};
+    return null;
+  }
+  if(AREA.startsWith("tower")){
+    const c3=S.c3, f=towerFloor();
+    if(f===1) return c3.t1 ? {t:"Floor 1 cleared. Climb the stairs.", at:tileAt(UP)} : {t:"The Guard Hall. Defeat every orc to raise the iron bars.", at:null};
+    if(f===2){ if(!c3.t2bridge) return {t:"Strike the minecart on the lower track from below so it rolls into the pit and makes a bridge.", at:props.find(p=>p.type==="cart"&&p.id==="A")};
+      if(!c3.t2rubble) return {t: c3.t2lever==="north" ? "The lever points north. Strike the upper cart from the left end so it rolls east and turns at the junction." : "Hit the lever so the junction points north, then strike the upper cart from the left.", at: c3.t2lever==="north" ? props.find(p=>p.type==="cart"&&p.id==="B") : find("lever")};
+      return {t: c3.t2crack||c3.heart2 ? "Climb the stairs." : "Climb the stairs. (A cracked wall on the lower right hides something. Red's Power Strike could open it.)", at:tileAt(UP)}; }
+    if(f===3){ if(c3.t3) return {t:"Cross the moon bridge and climb the stairs.", at:tileAt(UP)};
+      if(S.knight!=="purple") return {t:"The moon crystals are out of sword reach. Switch to the Purple Knight at the banner. Her Magic Pulse wakes crystals from a distance.", at:find("banner")};
+      const g=props.filter(p=>p.type==="glow"&&p.lit<=0).sort((a,b)=>Math.hypot(a.x-P.x,a.y-P.y)-Math.hypot(b.x-P.x,b.y-P.y))[0];
+      return {t:"Stand at the edge and use Magic Pulse (E) near each moon crystal. Wake all three before they fade.", at:g||null}; }
+    if(f===4){ if(!c3.t4a){ if(S.knight!=="blue") return {t:"Magic bolts pass through shields. Switch to the Blue Knight at the banner, then bounce bolts back at both sentinels.", at:find("banner")};
+        return {t:"Walk up the hall and use Shield Guard (E) as the bolts arrive. They bounce back and break the sentinels.", at:props.find(p=>p.type==="sentinel"&&p.alive)}; }
+      if(!c3.t4b){ if(S.knight!=="green") return {t:"A hidden rune seals the stairs. Switch to the Green Knight at the banner downstairs. Woodland Sense reveals hidden things.", at:find("banner")};
+        return {t: P.sense>0 ? "There's the rune! Strike it with your sword." : "Use Woodland Sense (E) in the top room to reveal the hidden rune.", at: P.sense>0 ? find("rune") : null}; }
+      return {t:"Climb to the top of the tower.", at:tileAt(UP)}; }
+    if(f===5){ if(!c3.boss) return {t: boss&&boss.active ? "Defeat Grimtusk! Hide behind pillars or block toward the bell when it rings. Strike him when he's stunned." : "Step forward to face the master of the tower.", at:null};
+      if(!c3.bell) return {t:"Strike the bell three times to silence it.", at:find("bell")};
+      return {t:"Take the last Crownstone piece.", at:find("piece4")}; }
+  }
+  if(AREA!=="world") return null;
+  if(s===16) return {t:"Chapter 3: go inside the castle (front door, south side) and find Princess Elowen.", at:door};
+  if(s===17) return {t:"Go inside the castle. The princess opened a secret passage in the west wing.", at:door};
+  if(s===18){ const missing=Object.keys(KNIGHTS).filter(k=>!S.team.includes(k));
+    if(missing.length){ const r=props.find(p=>p.type==="recruit"); return {t:`The tower gate needs all four knights. Recruit the ${missing.map(k=>KNIGHTS[k].name).join(" and ")}, waiting by the banners.`, at:r}; }
+    return {t:"Take the Royal Key to the Dark Tower in the far north-east.", at:props.find(p=>p.type==="towervines")}; }
+  if(s===19) return {t:"Climb the Dark Tower. The door is in the far north-east.", at:{x:58.5*TILE,y:9.6*TILE,h:60}};
+  if(s===20) return {t:"Take the last piece to the Crownstone chamber inside the castle.", at:door};
+  return null;
+}
+
+/* ---------- drawing for new things ---------- */
+function drawC3Prop(p){
+  const t=p.type;
+  if(t==="pillar"){ const tw=p.tower; shadow(p.x,p.y,18); ctx.fillStyle=tw?"#3a2f52":"#b3a58d"; ctx.fillRect(p.x-15,p.y-14,30,14); ctx.fillStyle=tw?"#4d3f6b":"#cfc2aa"; ctx.fillRect(p.x-11,p.y-74,22,62); ctx.fillStyle=tw?"#5b4c7d":"#ddd2bc"; ctx.fillRect(p.x-11,p.y-74,7,62); ctx.fillStyle=tw?"#3a2f52":"#b3a58d"; ctx.fillRect(p.x-15,p.y-82,30,10); return true; }
+  if(t==="torch"){ const f=.8+Math.sin(tNow*11+p.x)*.12+Math.sin(tNow*7)*.08, col=AREA.startsWith("tower")?["#b07cff","#e8d4ff"]:["#ff9a3a","#ffe08a"];
+    ctx.fillStyle="#3a3d42"; ctx.fillRect(p.x-3,p.y-22,6,12); ctx.fillStyle="#5a3a22"; ctx.fillRect(p.x-5,p.y-26,10,5);
+    const g=ctx.createRadialGradient(p.x,p.y-34,2,p.x,p.y-34,46); g.addColorStop(0,col[0]+"66"); g.addColorStop(1,col[0]+"00"); ctx.fillStyle=g; ctx.fillRect(p.x-46,p.y-80,92,92);
+    blob2(p.x,p.y-33,7*f,col[0]); blob2(p.x,p.y-31,4*f,col[1]); return true; }
+  if(t==="throne"){ shadow(p.x,p.y,30); ctx.fillStyle="#7a2420"; ctx.fillRect(p.x-26,p.y-36,52,30); ctx.fillStyle="#a3302b"; ctx.fillRect(p.x-20,p.y-80,40,50); ctx.fillStyle="#d9a441"; ctx.fillRect(p.x-30,p.y-38,60,6); ctx.fillRect(p.x-24,p.y-84,48,6);
+    ctx.beginPath(); ctx.moveTo(p.x-14,p.y-84); ctx.lineTo(p.x-14,p.y-98); ctx.lineTo(p.x-6,p.y-90); ctx.lineTo(p.x,p.y-102); ctx.lineTo(p.x+6,p.y-90); ctx.lineTo(p.x+14,p.y-98); ctx.lineTo(p.x+14,p.y-84); ctx.fill(); ctx.fillStyle="#7a2420"; ctx.fillRect(p.x-30,p.y-10,8,10); ctx.fillRect(p.x+22,p.y-10,8,10); return true; }
+  if(t==="crownstone"){ shadow(p.x,p.y,30); ctx.fillStyle="#b3a58d"; ctx.fillRect(p.x-24,p.y-30,48,30); ctx.fillStyle="#d9a441"; ctx.fillRect(p.x-28,p.y-34,56,6);
+    const n = S.stage>=21 ? 4 : 0, cx=p.x, cy=p.y-70;
+    if(S.stage>=21){ const g=ctx.createRadialGradient(cx,cy,4,cx,cy,90); g.addColorStop(0,`rgba(160,220,255,${.6+Math.sin(tNow*3)*.15})`); g.addColorStop(1,"rgba(160,220,255,0)"); ctx.fillStyle=g; ctx.fillRect(cx-90,cy-90,180,180); }
+    ctx.strokeStyle="#d9a441"; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(cx,cy,26,0,7); ctx.stroke();
+    for(let i=0;i<4;i++){ const a=i*Math.PI/2+Math.PI/4, sx=cx+Math.cos(a)*12, sy=cy+Math.sin(a)*12, has = S.stage>=21 || i<Math.min(S.pieces,4) && S.stage>=21;
+      ctx.fillStyle = S.stage>=21 ? "#7fd0f5" : "#2a2018"; ctx.beginPath(); ctx.moveTo(sx,sy-9); ctx.lineTo(sx+9,sy); ctx.lineTo(sx,sy+9); ctx.lineTo(sx-9,sy); ctx.closePath(); ctx.fill(); ctx.strokeStyle="#d9a441"; ctx.lineWidth=1.5; ctx.stroke(); }
+    if(S.stage<21 && S.pieces>0){ ctx.font="600 13px Fredoka, sans-serif"; ctx.textAlign="center"; ctx.fillStyle="#7fd0f5"; ctx.fillText(`${S.pieces}/4 found`,cx,cy-36); } return true; }
+  if(t==="rack"){ shadow(p.x,p.y,16); ctx.fillStyle="#6e4728"; ctx.fillRect(p.x-18,p.y-70,5,70); ctx.fillRect(p.x+13,p.y-70,5,70); ctx.fillRect(p.x-18,p.y-66,36,5); ctx.fillRect(p.x-18,p.y-30,36,5);
+    for(let k=0;k<3;k++){ const on=k<S.sword; ctx.fillStyle=on?["#b6bcc1","#d6dbe0","#e08a4a"][k]:"#5e6268"; ctx.fillRect(p.x-11+k*9,p.y-62,4,46); ctx.fillStyle="#e9b649"; ctx.fillRect(p.x-13+k*9,p.y-22,8,3); } return true; }
+  if(t==="dummy"){ p.hitT=Math.max(0,p.hitT-.016); const w=Math.sin(tNow*20)*p.hitT*8; shadow(p.x,p.y,14); ctx.fillStyle="#6e4728"; ctx.fillRect(p.x-3,p.y-30,6,30);
+    ctx.save(); ctx.translate(p.x,p.y-30); ctx.rotate(w*.03); ctx.fillStyle="#d8b67c"; ctx.fillRect(-14,-34,28,34); ctx.fillStyle="#c9a35f"; ctx.fillRect(-18,-30,36,6); blob2(0,-44,11,"#d8b67c"); ctx.strokeStyle="#a3302b"; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,-18,7,0,7); ctx.stroke(); ctx.beginPath(); ctx.arc(0,-18,2,0,7); ctx.stroke(); ctx.restore();
+    if(p.hits>1 && p.hitT>0){ ctx.font="700 15px Fredoka, sans-serif"; ctx.textAlign="center"; ctx.fillStyle="#e9b649"; ctx.fillText(`${p.hits} hit combo!`,p.x,p.y-96); } return true; }
+  if(t==="trophy"){ shadow(p.x,p.y,40); ctx.fillStyle="#6e4728"; ctx.fillRect(p.x-38,p.y-56,76,56); ctx.fillStyle="#a8d8f455"; ctx.fillRect(p.x-34,p.y-52,68,36); ctx.strokeStyle="#d9a441"; ctx.lineWidth=2; ctx.strokeRect(p.x-34,p.y-52,68,36);
+    const tr=S.trophies||{}; if(S.race.medal) blob2(p.x-22,p.y-34,7,MEDALS[S.race.medal].c); if(tr.scale){ ctx.fillStyle="#4fb36a"; ctx.beginPath(); ctx.moveTo(p.x-4,p.y-44); ctx.lineTo(p.x+6,p.y-34); ctx.lineTo(p.x-4,p.y-24); ctx.lineTo(p.x-12,p.y-34); ctx.fill(); }
+    if(tr.crown){ ctx.fillStyle="#8e959c"; ctx.fillRect(p.x+12,p.y-32,18,8); ctx.beginPath(); ctx.moveTo(p.x+12,p.y-32); ctx.lineTo(p.x+15,p.y-42); ctx.lineTo(p.x+21,p.y-34); ctx.lineTo(p.x+27,p.y-42); ctx.lineTo(p.x+30,p.y-32); ctx.fill(); } return true; }
+  if(t==="shelf"){ const open=S.c3.passage, ox=open?-26:0; shadow(p.x+ox,p.y,22); ctx.fillStyle="#5a3a22"; ctx.fillRect(p.x-22+ox,p.y-78,44,78); ctx.fillStyle="#3b2414"; ctx.fillRect(p.x-18+ox,p.y-74,36,70);
+    const cols=["#a3302b","#2f5fa8","#3f9a4a","#d9a441","#7a44b0"]; for(let r=0;r<3;r++){ ctx.fillStyle="#6e4728"; ctx.fillRect(p.x-18+ox,p.y-52+r*22,36,3); for(let k=0;k<5;k++){ ctx.fillStyle=cols[(k+r*2)%5]; ctx.fillRect(p.x-16+k*7+ox,p.y-70+r*22,5,17); } }
+    if(!open){ ctx.fillStyle="#e9b649"; ctx.fillRect(p.x+5,p.y-48,3,4); if(P.sense>0||S.stage>=16){ const s=Math.sin(tNow*5)*.5+.5; ctx.fillStyle=`rgba(255,240,170,${.4+s*.5})`; star(p.x+7,p.y-54,3+s*2); } } return true; }
+  if(t==="pie"){ ctx.fillStyle="#c98a4a"; ctx.beginPath(); ctx.ellipse(p.x,p.y-24,12,7,0,0,7); ctx.fill(); ctx.fillStyle="#8a2e64"; ctx.beginPath(); ctx.ellipse(p.x,p.y-26,8,4,0,0,7); ctx.fill(); ctx.strokeStyle="#e2b06a"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(p.x-8,p.y-26); ctx.lineTo(p.x+8,p.y-26); ctx.stroke(); return true; }
+  if(t==="bed") return true;
+  if(t==="statue"){ const on=at(p.tx,p.ty)===PLATE; shadow(p.x,p.y,18); ctx.fillStyle=on?"#c9b48a":"#8e959c"; ctx.fillRect(p.x-17,p.y-14,34,14); ctx.fillStyle=on?"#ddd0b2":"#aab1b7"; ctx.fillRect(p.x-11,p.y-50,22,38);
+    blob2(p.x,p.y-58,11,on?"#ddd0b2":"#aab1b7"); ctx.fillStyle=on?"#b3a58d":"#7d848b"; ctx.fillRect(p.x-11,p.y-60,22,5); ctx.fillRect(p.x+10,p.y-54,4,40); ctx.fillStyle="#2a2018"; ctx.fillRect(p.x-6,p.y-60,12,2);
+    if(on){ const g=ctx.createRadialGradient(p.x,p.y-30,4,p.x,p.y-30,40); g.addColorStop(0,"rgba(244,210,122,.35)"); g.addColorStop(1,"rgba(244,210,122,0)"); ctx.fillStyle=g; ctx.fillRect(p.x-40,p.y-70,80,80); } return true; }
+  if(t==="vlever"){ shadow(p.x,p.y,12); ctx.fillStyle="#4a4d52"; ctx.fillRect(p.x-12,p.y-16,24,14); ctx.save(); ctx.translate(p.x,p.y-14); ctx.rotate(-.6); ctx.fillStyle="#9aa3ab"; ctx.fillRect(-2.5,-30,5,30); blob2(0,-31,6,"#e2633d"); ctx.restore(); ctx.font="600 10px Fredoka, sans-serif"; ctx.textAlign="center"; ctx.fillStyle="#e9b649"; ctx.fillText("RESET",p.x,p.y+12); return true; }
+  if(t==="vchest"||t==="hchest"){ const open = t==="vchest"?S.c3.key:S.c3.heart2; shadow(p.x,p.y,22); ctx.fillStyle="#6e4a2c"; ctx.fillRect(p.x-22,p.y-30,44,26); ctx.fillStyle=open?"#3b2414":"#8a5a34"; ctx.fillRect(p.x-22,p.y-40,44,12); ctx.fillStyle="#e9b649"; ctx.fillRect(p.x-22,p.y-30,44,3); ctx.fillRect(p.x-4,p.y-32,8,10);
+    if(!open){ const g=ctx.createRadialGradient(p.x,p.y-30,2,p.x,p.y-30,46); g.addColorStop(0,t==="hchest"?"rgba(255,140,140,.35)":"rgba(233,182,73,.35)"); g.addColorStop(1,"rgba(0,0,0,0)"); ctx.fillStyle=g; ctx.fillRect(p.x-46,p.y-76,92,92); } return true; }
+  if(t==="sentinel"){ const a=p.alive; ctx.fillStyle=a?"#5b4c7d":"#2f2843"; ctx.fillRect(p.x-18,p.y-48,36,46); ctx.fillStyle=a?"#3a2f52":"#1e1828"; ctx.fillRect(p.x-14,p.y-10,28,10);
+    if(a){ const g=(p.glow||0)*3; blob2(p.x,p.y-26,10+g*3,"#c9a3ff"); blob2(p.x,p.y-26,5,"#ffffff"); } else { ctx.strokeStyle="#120c1c"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(p.x-12,p.y-44); ctx.lineTo(p.x+2,p.y-24); ctx.lineTo(p.x-6,p.y-8); ctx.stroke(); } return true; }
+  if(t==="rune"){ if(S.c3.t4b){ blob2(p.x,p.y-6,10,"rgba(165,224,138,.35)"); return true; } if(P.sense<=0) return true; const s=Math.sin(tNow*6)*.5+.5;
+    ctx.strokeStyle=`rgba(165,240,140,${.6+s*.4})`; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(p.x,p.y-6,14,0,7); ctx.stroke(); ctx.beginPath(); ctx.moveTo(p.x,p.y-18); ctx.lineTo(p.x,p.y+6); ctx.moveTo(p.x-8,p.y-12); ctx.lineTo(p.x+8,p.y); ctx.moveTo(p.x+8,p.y-12); ctx.lineTo(p.x-8,p.y); ctx.stroke(); return true; }
+  if(t==="bell"){ p.ring=Math.max(0,(p.ring||0)-.016); const sw=Math.sin(tNow*30)*p.ring*.25, silent=S.c3.bell;
+    ctx.fillStyle="#2a2018"; ctx.fillRect(p.x-40,p.y-84,80,8); ctx.fillRect(p.x-2,p.y-80,4,18);
+    ctx.save(); ctx.translate(p.x,p.y-64); ctx.rotate(sw); const g=ctx.createLinearGradient(-36,0,36,0); g.addColorStop(0,"#6a4a9a"); g.addColorStop(.5,"#b080e8"); g.addColorStop(1,"#5a3a88"); ctx.fillStyle=g;
+    ctx.beginPath(); ctx.moveTo(-14,0); ctx.quadraticCurveTo(-18,30,-36,52); ctx.lineTo(36,52); ctx.quadraticCurveTo(18,30,14,0); ctx.closePath(); ctx.fill(); ctx.fillStyle="#3a2f52"; ctx.fillRect(-38,50,76,6); blob2(0,58,7,"#3a2f52");
+    if(silent||p.hp<3){ ctx.strokeStyle="#120c1c"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(2,4); ctx.lineTo(-6,22); ctx.lineTo(4,34); if(silent||p.hp<2){ ctx.lineTo(-4,52); } ctx.stroke(); }
+    ctx.restore(); if(!silent){ const gg=ctx.createRadialGradient(p.x,p.y-40,4,p.x,p.y-40,90); gg.addColorStop(0,`rgba(176,128,232,${.25+p.ring*.5})`); gg.addColorStop(1,"rgba(176,128,232,0)"); ctx.fillStyle=gg; ctx.fillRect(p.x-90,p.y-130,180,180); } return true; }
+  if(t==="piece4"){ const y=p.y-40+Math.sin(tNow*3)*4; const g=ctx.createRadialGradient(p.x,y,2,p.x,y,46); g.addColorStop(0,"rgba(160,220,255,.8)"); g.addColorStop(1,"rgba(160,220,255,0)"); ctx.fillStyle=g; ctx.fillRect(p.x-46,y-46,92,92);
+    ctx.fillStyle="#7fd0f5"; ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(p.x-4,y-16); ctx.lineTo(p.x+12,y-4); ctx.lineTo(p.x+4,y+12); ctx.lineTo(p.x-12,y+4); ctx.closePath(); ctx.fill(); ctx.stroke(); return true; }
+  if(t==="knot"){ if(p.hp<=0){ blob2(p.x,p.y-6,10,"rgba(90,50,120,.5)"); return true; } const s=Math.sin(tNow*4+p.x)*.5+.5, fl=p.flash>0;
+    if(boss && boss.kind==="dragon" && boss.state!=="weak"){ ctx.strokeStyle=`rgba(157,99,218,${.5+s*.3})`; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(p.x,p.y-20); ctx.quadraticCurveTo((p.x+boss.x)/2,(p.y+boss.y)/2-80,boss.x,boss.y-60-boss.z); ctx.stroke(); }
+    shadow(p.x,p.y,20); blob2(p.x,p.y-18,20+s*3,fl?"#ffffff":"#4a2470"); blob2(p.x+5,p.y-24,11,fl?"#ffffff":"#7a44b0"); blob2(p.x-6,p.y-14,6,"#d8b8ff");
+    for(let k=0;k<p.max;k++){ ctx.fillStyle=k<p.hp?"#c9a3ff":"#00000066"; ctx.fillRect(p.x-p.max*4.5+k*9,p.y-52,7,4); } return true; }
+  if(t==="castledoor") return true;
+  return false;
+}
+function drawBoss(){
+  const b=boss; if(!b) return;
+  if(b.kind==="dragon"){
+    const lift=b.z, fl=b.flash>0?"brightness(2.4)":null;
+    shadow(b.x,b.y,Math.max(24,56-lift*.18));
+    if(b.state==="hover"||b.state==="drop"){ const tx=b.state==="drop"?b.lx:b.x, ty=b.state==="drop"?b.ly:b.y; ctx.strokeStyle="rgba(255,80,60,.85)"; ctx.lineWidth=3; ctx.fillStyle="rgba(255,80,60,.18)"; ctx.beginPath(); ctx.ellipse(tx,ty,64,40,0,0,7); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.ellipse(tx,ty,120,74,0,0,7); ctx.stroke(); }
+    if(b.state==="breathWind"||b.state==="breath"){ const on=b.state==="breath", L=335; ctx.save(); ctx.translate(b.x,b.y); ctx.rotate(b.ang);
+      ctx.fillStyle = on ? "rgba(255,120,40,.35)" : `rgba(255,60,40,${.12+(1-b.t/b.tw)*.25})`; ctx.strokeStyle= on?"rgba(255,180,80,.9)":"rgba(255,80,60,.8)"; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,L,-.42,.42); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
+    const y=b.y-lift+(b.state==="weak"?8:Math.sin(tNow*2.4)*3);
+    sprite("dragon", b.x, y, b.state==="weak"?140:170, b.face<0, 1, fl);
+    if(b.shield && b.state!=="weak"){ ctx.strokeStyle="#7a44b0"; ctx.lineWidth=7; ctx.lineCap="round"; ctx.beginPath(); ctx.moveTo(b.x-64,y-70); ctx.quadraticCurveTo(b.x-16,y-118,b.x+18,y-64); ctx.moveTo(b.x+64,y-90); ctx.quadraticCurveTo(b.x+20,y-40,b.x-14,y-96); ctx.stroke(); ctx.strokeStyle="#c9a3ff"; ctx.lineWidth=2; ctx.stroke();
+      ctx.strokeStyle=`rgba(201,163,255,${.35+Math.sin(tNow*5)*.15})`; ctx.lineWidth=3; ctx.beginPath(); ctx.ellipse(b.x,y-80,78,92,0,0,7); ctx.stroke(); }
+    if(b.state==="dizzy"||b.state==="weak"){ for(let k=0;k<3;k++){ const a=tNow*5+k*2.1; ctx.fillStyle="#f2d24a"; star(b.x+Math.cos(a)*30,y-170+Math.sin(a)*8,7); } }
+    if(b.state==="weak"){ ctx.strokeStyle=`rgba(255,224,138,${.5+Math.sin(tNow*4)*.3})`; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(b.x-60,y-60); ctx.quadraticCurveTo(b.x-16,y-100,b.x+16,y-56); ctx.stroke(); }
+    return;
+  }
+  if(b.kind==="grim"){
+    if(b.state==="slamWind"){ const k=1-b.t/b.tw; ctx.fillStyle=`rgba(230,60,40,${.18+k*.3})`; ctx.strokeStyle="rgba(255,90,60,.9)"; ctx.lineWidth=3; ctx.beginPath(); ctx.ellipse(b.sx,b.sy,b.sr,b.sr*.62,0,0,7); ctx.fill(); ctx.stroke(); }
+    if(b.state==="chargeWind"){ ctx.strokeStyle=`rgba(255,80,60,${.5+(1-b.t/b.tw)*.5})`; ctx.lineWidth=26; ctx.globalAlpha=.35; ctx.beginPath(); ctx.moveTo(b.x,b.y); ctx.lineTo(b.x+Math.cos(b.ang)*700,b.y+Math.sin(b.ang)*700); ctx.stroke(); ctx.globalAlpha=1; }
+    shadow(b.x,b.y,30);
+    const shakeX = b.state==="slamWind"||b.state==="chargeWind" ? Math.sin(tNow*40)*2 : 0, kneel=b.state==="beaten";
+    sprite("orc_brute", b.x+shakeX, b.y+(kneel?10:0), kneel?92:112, b.face>0, 1, b.flash>0?"brightness(2.2)":"saturate(1.25) hue-rotate(-18deg)");
+    const top=b.y-(kneel?92:112);
+    ctx.fillStyle="#d9a441"; ctx.beginPath(); ctx.moveTo(b.x-16,top+18); ctx.lineTo(b.x-16,top+4); ctx.lineTo(b.x-8,top+12); ctx.lineTo(b.x,top); ctx.lineTo(b.x+8,top+12); ctx.lineTo(b.x+16,top+4); ctx.lineTo(b.x+16,top+18); ctx.closePath(); ctx.fill(); ctx.strokeStyle="#7a5a12"; ctx.lineWidth=1.5; ctx.stroke();
+    if(b.state==="stunned"||kneel){ for(let k=0;k<3;k++){ const a=tNow*5+k*2.1; ctx.fillStyle="#f2d24a"; star(b.x+Math.cos(a)*20,top-4+Math.sin(a)*6,6); } }
+  }
+}
+function drawShocks(){
+  shocks.forEach(s=>{ ctx.strokeStyle="rgba(201,163,255,.85)"; ctx.lineWidth=7; ctx.beginPath(); ctx.ellipse(s.x,s.y+40,s.r,s.r*.62,0,0,7); ctx.stroke(); ctx.strokeStyle="rgba(255,240,200,.6)"; ctx.lineWidth=2; ctx.stroke(); });
+}
+function drawIndoorLight(z,sx,sy){
+  const alpha = AREA==="castle" ? 0 : AREA==="vault" ? .62 : .5;
+  if(!alpha) return;
+  if(lightCv.width!==cv.width || lightCv.height!==cv.height){ lightCv.width=cv.width; lightCv.height=cv.height; }
+  lctx.setTransform(1,0,0,1,0,0); lctx.globalCompositeOperation="source-over"; lctx.clearRect(0,0,lightCv.width,lightCv.height);
+  lctx.fillStyle=`rgba(10,6,18,${alpha})`; lctx.fillRect(0,0,lightCv.width,lightCv.height);
+  lctx.setTransform(z,0,0,z,(-cam.x+sx)*z,(-cam.y+sy)*z); lctx.globalCompositeOperation="destination-out";
+  const light=(x,y,r)=>{ const g=lctx.createRadialGradient(x,y,r*.2,x,y,r); g.addColorStop(0,"rgba(0,0,0,1)"); g.addColorStop(1,"rgba(0,0,0,0)"); lctx.fillStyle=g; lctx.fillRect(x-r,y-r,r*2,r*2); };
+  light(P.x,P.y-26,300);
+  props.forEach(p=>{ if(p.type==="torch") light(p.x,p.y-30,190+Math.sin(tNow*7+p.x)*8); if(p.type==="glow") light(p.x,p.y-24,p.lit>0?200:90); if(p.type==="bell") light(p.x,p.y-40,220); if(p.type==="sentinel"&&p.alive) light(p.x,p.y-26,120); if(p.type==="vchest"||p.type==="piece4") light(p.x,p.y-30,140); });
+  if(boss) light(boss.x,boss.y-50,180);
+  ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(lightCv,0,0); ctx.restore();
+}
+
 function newPlayer(){
   P = {x:PLACES.spawn[0]*TILE, y:PLACES.spawn[1]*TILE, r:12, fx:0, fy:1, mounted:false, inv:0, atkT:0, atkCd:0, blocking:false, abCd:0, bubble:0, sense:0, jump:null, moving:false, walk:0, dead:false};
   H = {x:PLACES.horse[0]*TILE, y:PLACES.horse[1]*TILE, coming:false, flip:false};
@@ -889,8 +1515,9 @@ function newPlayer(){
 function freshSave(k){
   const order = ["sun","moon","star","leaf"].sort(()=>Math.random()-.5);
   const ph = ["horse_brown","horse_tan","horse_gray","horse_white"].find(h=>h!==KNIGHTS[k].horse);
-  return {marsh:{gA:false,gB:false,piece:false}, ridge:{freed:false,crack:false,chest:false}, whistle:false, mat:{timber:0,stone:0,ore:0}, restored:[], logs:[], mine:{bridge:false,rubble:false,crack:false,ores:[],piles:[],tools:false,chest:false,lever:"east"}, bramQuest:false, toolsBack:false, team:[k], pony:ph, race:{best:null, medal:0}, knight:k, stage:0, coins:0, maxHp:5, hp:5, sword:1, rims:0, charm:false, ribbon:false, pieces:0, order, progress:0, solved:false, tabletRead:false, chest:false, cracked:false, caches:[], beaten:[], bridgeFree:false, seen:[], time:0, orcsBeaten:0};
+  return {diff:pickDiff, c3:c3Default(), beatAt:{}, trophies:{}, marsh:{gA:false,gB:false,piece:false}, ridge:{freed:false,crack:false,chest:false}, whistle:false, mat:{timber:0,stone:0,ore:0}, restored:[], logs:[], mine:{bridge:false,rubble:false,crack:false,ores:[],piles:[],tools:false,chest:false,lever:"east"}, bramQuest:false, toolsBack:false, team:[k], pony:ph, race:{best:null, medal:0}, knight:k, stage:0, coins:0, maxHp:5, hp:5, sword:1, rims:0, charm:false, ribbon:false, pieces:0, order, progress:0, solved:false, tabletRead:false, chest:false, cracked:false, caches:[], beaten:[], bridgeFree:false, seen:[], time:0, orcsBeaten:0};
 }
+function c3Default(){ return {passage:false, vault:false, key:false, tower:false, t1:false, t2bridge:false, t2rubble:false, t2lever:"east", t2crack:false, heart2:false, t3:false, t4a:false, t4b:false, boss:false, bell:false}; }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
 function loadSave(){ try{ const j = localStorage.getItem(KEY); return j ? JSON.parse(j) : null; }catch(e){ return null; } }
 function clearSave(){ try{ localStorage.removeItem(KEY); }catch(e){} }
@@ -903,11 +1530,14 @@ function startGame(saved){
   if(!S.mine) S.mine={bridge:false,rubble:false,crack:false,ores:[],piles:[],tools:false,chest:false,lever:"east"};
   if(!S.marsh) S.marsh={gA:false,gB:false,piece:false}; if(!S.ridge) S.ridge={freed:false,crack:false,chest:false};
   if(S.stage===10) S.stage=11;
+  if(!S.diff) S.diff="normal"; if(!S.c3) S.c3=c3Default(); if(!S.trophies) S.trophies={}; if(S.stage>=15) S.trophies.scale=true;
+  if(!S.beatAt){ S.beatAt={}; S.beaten.forEach(id=>S.beatAt[id]=S.time); }
   race = null; AREA="world"; for(const k in AREAS) delete AREAS[k]; newSurface(64,52);
   buildMap();
   if(S.stage>=15) disc(9.5,7.5,2.6,(x,y)=>{ if(at(x,y)===VINE) setT(x,y,G); });
   if(S.solved) for(let y=7;y<=9;y++) for(let x=45;x<=47;x++) if(at(x,y)===VINE) setT(x,y,G);
   if(S.cracked) setT(PLACES.chest[0]-1, PLACES.chest[1], G);
+  if(S.c3.tower) for(let y=0;y<MH;y++) for(let x=50;x<MW;x++) if(at(x,y)===VINE) setT(x,y,G);
   paintStatic(0,0,MW-1,MH-1); paintMini();
   newPlayer();
   S.hp = S.maxHp;
@@ -953,7 +1583,7 @@ function setupTouch(){
 /* =====================================================================
    HELPERS: collision, feedback
    ===================================================================== */
-function solidAt(px,py,isP){ const t=tileAtPx(px,py); if(SOLID.has(t)) return true; return !isP && (t===CHASM||t===HIDDEN||t===SINK); }
+function solidAt(px,py,isP){ const t=tileAtPx(px,py); if(SOLID.has(t)) return true; if(occ.size && occ.has(Math.floor(px/TILE)+","+Math.floor(py/TILE))) return true; return !isP && (t===CHASM||t===HIDDEN||t===SINK||t===VOID); }
 function blocked(x,y,r,isP){ return solidAt(x-r,y-r*.6,isP)||solidAt(x+r,y-r*.6,isP)||solidAt(x-r,y+r*.6,isP)||solidAt(x+r,y+r*.6,isP)||solidAt(x,y-r*.7,isP)||solidAt(x,y+r*.7,isP); }
 function slideTo(e,axis,d,ip){ const cur=axis==="y"?e.y:e.x, base=(Math.floor(cur/TILE)+.5)*TILE; let best=null;
   for(const c of [base, base-TILE, base+TILE]){ if(Math.abs(c-cur)>TILE*.72) continue; const ok = axis==="y" ? !blocked(e.x+d, c, e.r, ip) : !blocked(c, e.y+d, e.r, ip); if(ok && (best===null || Math.abs(c-cur)<Math.abs(best-cur))) best=c; }
@@ -973,25 +1603,31 @@ const K = () => KNIGHTS[S.knight];
 function swordDmg(){ return S.sword; }
 function doHit(cx,cy,rad,dmg,kind){
   let any = false;
-  orcs.forEach(o=>{ if(o.state==="dizzy"||o.state==="flee") return; if(Math.hypot(o.x-cx,o.y-cy) < rad+o.r){ hurtOrc(o,dmg,kind); any=true; } });
+  orcs.forEach(o=>{ if(o.state==="dizzy"||o.state==="flee"||S.stage>=21) return; if(Math.hypot(o.x-cx,o.y-cy) < rad+o.r){ hurtOrc(o,dmg,kind); any=true; } });
+  if(boss && Math.hypot(boss.x-cx, boss.y-30-cy) < rad+(boss.kind==="dragon"?54:30)){ if(hurtBoss(dmg,kind)) any=true; }
   props.forEach(p=>{ if(p.type==="crystal" && Math.hypot(p.x-cx,p.y-cy) < rad+18){ strikeCrystal(p); any=true; }
     if(p.type==="cart" && Math.hypot(p.x-cx,p.y-cy) < rad+22){ pushCart(p); any=true; }
     if(p.type==="lever" && Math.hypot(p.x-cx,p.y-cy) < rad+18){ toggleLever(p); any=true; }
     if(p.type==="glow" && Math.hypot(p.x-cx,p.y-cy) < rad+20){ lightGlow(p); any=true; }
-    if(p.type==="moon" && Math.hypot(p.x-cx,p.y-cy) < rad+20){ useMoon(p); any=true; } });
+    if(p.type==="moon" && Math.hypot(p.x-cx,p.y-cy) < rad+20){ useMoon(p); any=true; }
+    if(p.type==="knot" && p.hp>0 && Math.hypot(p.x-cx,p.y-18-cy) < rad+24){ p.hp-=dmg; p.flash=.15; burst(p.x,p.y-20,"#c9a3ff",10,120); floatText(p.x,p.y-60,p.hp>0?String(dmg):"Cut!","#d8b8ff",p.hp<=0);
+      if(p.hp<=0){ p.hp=0; burst(p.x,p.y-20,"#7a44b0",26,170,4); shake=.2; if(!props.some(q=>q.type==="knot"&&q.hp>0)) toast("The vine shield is broken! Strike the dragon!",3000); } any=true; }
+    if(p.type==="dummy" && Math.hypot(p.x-cx,p.y-30-cy) < rad+22){ p.hits = p.hitT>0 ? p.hits+1 : 1; p.hitT=1.2; floatText(p.x,p.y-82,String(dmg),"#fff"); burst(p.x,p.y-40,"#e8d0a0",6,90); any=true; }
+    if(p.type==="bell" && Math.hypot(p.x-cx,p.y-cy) < rad+56){ strikeBell(p); any=true; }
+    if(p.type==="rune" && P.sense>0 && !S.c3.t4b && Math.hypot(p.x-cx,p.y-cy) < rad+22){ openRune(); any=true; } });
   // tall grass and cracked rock
   const tx0=Math.floor((cx-rad)/TILE), tx1=Math.floor((cx+rad)/TILE), ty0=Math.floor((cy-rad)/TILE), ty1=Math.floor((cy+rad)/TILE);
   for(let ty=ty0;ty<=ty1;ty++) for(let tx=tx0;tx<=tx1;tx++){
     const t = at(tx,ty), px=(tx+.5)*TILE, py=(ty+.5)*TILE;
     if(Math.hypot(px-cx,py-cy) > rad+TILE*.5) continue;
-    if(t===TALL){ setT(tx,ty,G); repaintTile(tx,ty); burst(px,py,"#5fa34b",8,90); const r=Math.random(); if(r<.12) pickups.push({type:"heart",x:px,y:py,vx:0,vy:0,z:0,vz:160,age:0}); else if(r<.3) coinsDrop(px,py,1); }
+    if(t===TALL){ setT(tx,ty,G); repaintTile(tx,ty); burst(px,py,"#5fa34b",8,90); const r=Math.random(); if(r<.12*D().heart/.35) pickups.push({type:"heart",x:px,y:py,vx:0,vy:0,z:0,vz:160,age:0}); else if(r<.3) coinsDrop(px,py,1); }
     if(t===PILE){ const key=tx+","+ty; crackHits[key]=(crackHits[key]||0)+(kind==="power"?2:1); burst(px,py,"#b6bcc1",8,100);
       if(crackHits[key]>=2){ setT(tx,ty,FLOOR); S.mine.piles.push(key); S.mat.stone+=2; floatText(px,py-30,"+2 stone","#d6dbe0",true); save(); } repaintTile(tx,ty); any=true; continue; }
     if(t===ORE){ const key=tx+","+ty; crackHits[key]=(crackHits[key]||0)+(kind==="power"?3:1); burst(px,py,"#e08a4a",8,100);
       if(crackHits[key]>=3){ setT(tx,ty,CAVE); S.mine.ores.push(key); S.mat.ore+=2; floatText(px,py-30,"+2 copper ore","#f0b070",true); save(); } repaintTile(tx,ty); any=true; continue; }
     if(t===CRACK && kind!=="power"){ burst(px,py,"#8e959c",5,70); floatText(px,py-30,"Clang!","#cfd4d8"); if(!S.clangTold){ S.clangTold=true; toast(S.team.includes("red")?"Too tough for a sword. Switch to the Red Knight at a banner and use Power Strike (E).":"Too tough for a sword. Only the Red Knight's Power Strike could break it."); } any=true; continue; }
     if(t===CRACK){ const key=tx+","+ty; crackHits[key]=3; burst(px,py,"#8e959c",8,100);
-      if(crackHits[key]>=3){ setT(tx,ty,AREA==="mine"?FLOOR:G); if(AREA==="mine") S.mine.crack=true; else if(AREA==="ridge") S.ridge.crack=true; else S.cracked=true; save(); burst(px,py,"#aab1b7",20,160,4); shake=.25; toast("The cracked rock crumbles!"); } repaintTile(tx,ty); any=true; }
+      if(crackHits[key]>=3){ setT(tx,ty,AREA==="mine"?FLOOR:INDOOR(AREA)?IFLOOR:G); if(AREA==="mine") S.mine.crack=true; else if(AREA==="ridge") S.ridge.crack=true; else if(AREA==="tower2") S.c3.t2crack=true; else S.cracked=true; save(); burst(px,py,"#aab1b7",20,160,4); shake=.25; toast("The cracked rock crumbles!"); } repaintTile(tx,ty); any=true; }
   }
   return any;
 }
@@ -1000,8 +1636,8 @@ function hurtOrc(o,dmg,kind){
   const d = Math.hypot(o.x-P.x,o.y-P.y)||1; moveEnt(o,(o.x-P.x)/d*(kind==="power"?34:20),(o.y-P.y)/d*(kind==="power"?34:20));
   floatText(o.x,o.y-ORC_KINDS[o.kind].h,String(dmg),"#fff");
   burst(o.x,o.y-30,"#fff6c8",6,90);
-  if(o.hp<=0){ o.state="dizzy"; o.t=1.1; S.orcsBeaten++; coinsDrop(o.x,o.y,ORC_KINDS[o.kind].coins + (Math.random()<.3?1:0)); if(Math.random()<.35) pickups.push({type:"heart",x:o.x,y:o.y,vx:rnd(-40,40),vy:rnd(-40,40),z:0,vz:170,age:0});
-    S.beaten.push(o.id);
+  if(o.hp<=0){ o.state="dizzy"; o.t=1.1; S.orcsBeaten++; coinsDrop(o.x,o.y,ORC_KINDS[o.kind].coins + (Math.random()<.3?1:0)); if(Math.random()<D().heart) pickups.push({type:"heart",x:o.x,y:o.y,vx:rnd(-40,40),vy:rnd(-40,40),z:0,vz:170,age:0});
+    S.beaten.push(o.id); S.beatAt=S.beatAt||{}; S.beatAt[o.id]=S.time;
     if(o.id==="bridge"){ S.bridgeFree=true; if(S.stage===4){ S.stage=5; toast("The bridge guard stumbles off, dizzy! Go back and tell Bram."); } else toast("The bridge guard stumbles off, dizzy!"); }
     save(); return; }
   if(o.kind!=="club" && (o.state==="wind"||o.state==="aim")){ o.state="recover"; o.t=.35; }
@@ -1018,13 +1654,16 @@ function hurtPlayer(src,dmg,unblockable){
 }
 function faint(){
   P.dead = true; mode = "faint";
-  showOverlay(`<h2>Knocked out!</h2><p>Bram found you ${P.y<39*TILE?"out in the wild":"nearby"} and carried you back to the castle. You keep everything you collected.</p><div class="row"><button class="btn gold" data-ov="wake">Get back up</button></div>`);
+  showOverlay(`<h2>Knocked out!</h2><p>${AREA.startsWith("tower")?"Ember swooped in and carried you out to the tower gate. Floors you cleared stay cleared.":`Bram found you ${P.y<39*TILE?"out in the wild":"nearby"} and carried you back to the castle.`} You keep everything you collected.</p><div class="row"><button class="btn gold" data-ov="wake">Get back up</button></div>`);
 }
 function wake(){
-  if(AREA!=="world"){ stashArea(); useArea("world"); }
+  const wasTower = AREA.startsWith("tower");
+  if(AREA!=="world"){ stashArea(); useArea("world"); placeNpcs(); }
+  boss=null; shocks=[]; towerWave=null;
   S.hp = S.maxHp; P.dead=false; P.inv=1.5; P.mounted=false; P.jump=null;
   P.x = PLACES.spawn[0]*TILE; P.y = PLACES.spawn[1]*TILE; H.x = PLACES.horse[0]*TILE; H.y = PLACES.horse[1]*TILE; H.coming=false;
   if(pony && pony.follow){ pony.x = P.x-40; pony.y = P.y+10; }
+  if(wasTower){ P.x=58.5*TILE; P.y=10.45*TILE; H.x=56.6*TILE; H.y=10.6*TILE; }
   orcs.forEach(o=>{ if(o.state!=="dizzy"&&o.state!=="flee"){ o.x=o.hx; o.y=o.hy; o.hp=o.max; o.state="idle"; } });
   arrows=[]; rings=[]; mode="play"; $("#ov").hidden=true; save();
 }
@@ -1038,7 +1677,9 @@ function useAbility(){
   if(k==="green"){ P.sense = 7; burst(P.x,P.y-30,"#a5e08a",16,120); toast("Hidden tracks and secrets glow for a few seconds."); }
   if(k==="purple"){ rings.push({x:P.x,y:P.y-20,r:10,max:150,life:.45,col:"#c9a3ff"});
     orcs.forEach(o=>{ if(o.state==="dizzy"||o.state==="flee") return; const d=Math.hypot(o.x-P.x,o.y-P.y); if(d<150){ hurtOrc(o,1,"pulse"); if(o.hp>0) moveEnt(o,(o.x-P.x)/d*50,(o.y-P.y)/d*50); } });
-    props.forEach(p=>{ if(p.type==="glow" && Math.hypot(p.x-P.x,p.y-P.y)<170) lightGlow(p); });
+    props.forEach(p=>{ if(p.type==="glow" && Math.hypot(p.x-P.x,p.y-P.y)<170) lightGlow(p);
+      if(p.type==="knot" && p.hp>0 && Math.hypot(p.x-P.x,p.y-P.y)<150){ p.hp=Math.max(0,p.hp-2); p.flash=.15; burst(p.x,p.y-20,"#c9a3ff",12,130); if(!props.some(q=>q.type==="knot"&&q.hp>0)) toast("The vine shield is broken! Strike the dragon!",3000); } });
+    if(boss && Math.hypot(boss.x-P.x,boss.y-P.y)<170) hurtBoss(1,"pulse");
     if(AREA==="marsh"){ revealT=Math.max(revealT,10); toast("Your pulse lights up the hidden stones for a while.",2500); }
     let best=null, bd=190; props.forEach(p=>{ if(p.type==="crystal"&&!p.lit){ const d=Math.hypot(p.x-P.x,p.y-P.y); if(d<bd){ bd=d; best=p; } } }); if(best) strikeCrystal(best); }
 }
@@ -1066,6 +1707,7 @@ function solvePuzzle(){
 }
 function stageObjective(){
   if(AREA==="mine"){ if(!S.mine.tools) return {t: S.bramQuest ? "Find Bram's tool chest. Strike minecarts to send them rolling down the tracks." : "Explore Coppercap Mine. Mine ore veins and stone piles with your sword.", at:props.find(p=>p.type==="toolchest")}; return {t:"You have the tools. Head back to the mine exit.", at:{x:20.5*TILE, y:28.4*TILE, h:20}}; }
+  if(INDOOR(AREA) || (S.stage>=16 && AREA==="world")){ const o=c3Objective(); if(o) return o; }
   if(race){ const c=RACE[race.i]; return {t: race.count>0 ? "Get ready..." : `Riding course: gate ${race.i+1} of ${RACE.length}. Time ${race.t.toFixed(1)}s`, at:{x:c[0]*TILE, y:c[1]*TILE, h:70}}; }
   const s=S.stage, tp=(x,y)=>({x:x*TILE,y:y*TILE}), np=id=>npcs.find(n=>n.id===id);
   if(s===0) return {t:"Talk to Princess Elowen in the courtyard.", at:np("princess")};
@@ -1094,10 +1736,12 @@ function stageObjective(){
     if(AREA!=="ridge") return {t:"Climb Dragon Ridge: take the trail north past the dragon's old glade in the north-west forest.", at:{x:11.5*TILE, y:1.6*TILE, h:20}};
     if(P.y>21*TILE) return {t:"Climb the trail and cross the rope bridge. When the wind howls, hold Shift to brace.", at:{x:20*TILE,y:21*TILE,h:20}};
     if(P.y>11*TILE) return {t:"Cross the second rope bridge on the east side of the ledge.", at:{x:28*TILE,y:11*TILE,h:20}};
-    return {t:"Reach the dragon. Dodge the fire bursts, then press F by its nest to use the Crownstone pieces.", at:props.find(p=>p.type==="nest")};
+    if(boss && boss.state==="weak") return {t:"Ember is worn out. Stand beside it and press F to free it with the Crownstone pieces.", at:{x:boss.x,y:boss.y,h:150}};
+    if(boss && boss.active) return {t: boss.shield ? "Cut the purple vine knots to break the dragon's shield. Hide behind rocks from its fire breath." : "The shield is down! Strike Ember, especially when it's dizzy after a stomp.", at: boss.shield ? props.find(p=>p.type==="knot"&&p.hp>0) : null};
+    return {t:"Reach the top of the ridge and face the enchanted dragon.", at:{x:20.5*TILE,y:6*TILE,h:40}};
   }
   if(s===15) return {t:"Ember is free! Bring the third piece to Thistlebeard.", at:np("wizard")};
-  return sideObjective() || {t:"Chapter 2 complete. Press T to fly with Ember. The Dark Tower awaits in Chapter 3.", at:null};
+  return sideObjective() || {t:S.stage>=21 ? "You saved Clovervale! Explore, race, train, or start a new quest on Hard." : "Press T to fly with Ember.", at:null};
 }
 
 /* ---------- dialogue ---------- */
@@ -1145,7 +1789,12 @@ function talkTo(n){
     if(s===13) return say(who,"Two pieces! Hurry to Thistlebeard.");
     if(s===14) return say(who,["That bell... it frightened the dragon half to death. Dragon Ridge is up the trail north of its old glade.","The wind on those rope bridges is fierce. Brace with your shield when it howls."]);
     if(s===15) return say(who,"You freed the dragon! Take the third piece to Thistlebeard.");
-    if(s>=16) return say(who,["Three pieces, a dragon friend, and a castle coming back to life. I'm proud of us.", S.restored.length<4?"Let's keep fixing the castle while Thistlebeard studies the Dark Tower. The restoration board lists what we need.":"Thistlebeard says the last piece is at the top of the Dark Tower. When you're ready, we go together."]);
+    if(s===16) return say(who,[ "You made it inside! Welcome to the throne room.", "Thistlebeard told me everything. The last piece is at the top of the Dark Tower, beside that bell. But the tower door is sealed with royal magic.", "Only the Royal Key opens it, and it's locked in the vault under this castle. My great-grandmother hid the way down behind a bookshelf in the west wing.", "There. I've pulled the book with the golden crown. The shelf has swung open. The vault is guarded by an old statue puzzle, so think before you push!", "One more thing: the old tales say the tower gate only opens for all four knights of Clovervale. Make sure every knight rides with you." ], ()=>{ S.stage=17; S.c3.passage=true; save(); if(AREA==="castle"){ setT(2,17,DOWN); repaintTile(2,17); } toast("Quest started: The Royal Vault"); });
+    if(s===17) return say(who,"The passage is behind the bookshelf in the west wing, on the left side of the hall. Push the statues onto the plates to open the vault.");
+    if(s===18){ const miss=Object.keys(KNIGHTS).filter(k=>!S.team.includes(k)); return say(who, miss.length ? ["You found the Royal Key! And the Royal Shield suits you.", `Now gather the other knights. The ${miss.map(k=>KNIGHTS[k].name).join(" and ")} ${miss.length>1?"are":"is"} still waiting by a banner somewhere in the kingdom.`] : ["You found the Royal Key, and all four knights are ready!", "The Dark Tower is in the far north-east, behind the purple vines. Hold up the pieces and they'll burn away."]); }
+    if(s===19) return say(who,["Every floor of that tower is a trap made for a different knight. Use the banners inside to switch.", "Purple's pulse reaches what swords can't. Blue's bubble bounces magic. Green sees what's hidden. Red breaks what's cracked."]);
+    if(s===20) return say(who,"The last piece! Quickly, the Crownstone chamber is right behind my throne.");
+    if(s>=21) return say(who,["Clovervale is whole again, thanks to you.", "The orcs are calm now. Some of them even help Bram at the forge! Explore, race and train as much as you like."]);
     return say(who, S.restored.length<4 ? ["One piece down, three to go. I'm studying the old maps for the next one. I think it's near Dragon Ridge.", "Meanwhile, let's fix up the castle. The restoration board by the castle lists what we need."] : "One piece down, three to go. And look at our castle! I'm studying the old maps for the next piece. I think it's near Dragon Ridge.");
   }
   if(n.id==="smith"){
@@ -1184,12 +1833,14 @@ function talkTo(n){
         S.stage=14; for(let i=props.length-1;i>=0;i--) if(props[i].type==="dragon") props.splice(i,1); flyAnim={t:0,d:1.6,cut:true}; save();
         say(who,[ "That bell! It's what has been frightening the dragon all along.", "Follow it up Dragon Ridge, along the trail north of its old glade. Dodge its fire, and free it with the two pieces." ], ()=>toast("Quest started: A Dragon-Sized Problem")); }); });
     if(s===14) return say(who,"Dragon Ridge is up the trail north of the dragon's old glade, in the north-west forest. Mind the wind and the fire.");
-    if(s===15) return say(who,[ "Ember is free, and you carry three pieces of the Crownstone! I haven't been this happy in a hundred years.", "Only one piece remains, and I'm afraid I know where it is: at the top of the Dark Tower, right beside that wretched bell.", "Rest, train, and finish fixing up the castle. When you're ready, the Dark Tower awaits." ], ()=>{ S.stage=16; save(); chapterEnd2(); });
+    if(s===15) return say(who,[ "Ember is free, and you carry three pieces of the Crownstone! I haven't been this happy in a hundred years.", "Only one piece remains, and I'm afraid I know where it is: at the top of the Dark Tower, right beside that wretched bell.", "Rest, train, and finish fixing up the castle. When you're ready, the Dark Tower awaits." ], ()=>{ S.stage=16; placeNpcs(); save(); chapterEnd2(); });
     if(s===9) return say(who,[
       "There it is! One piece of the Crownstone. Feel how warm it is.",
       "Three more pieces are out there. One lies past Dragon Ridge, where the dragon is tangled in those same purple vines.",
       "That's a quest for another day. Well done, knight. Clovervale is a little safer tonight."
     ], ()=>{ S.stage=10; placeNpcs(); save(); chapterEnd(); });
+    const w3 = s===16 ? "The tower door answers only to royal magic. Elowen knows the old secrets. You'll find her in the throne room, inside the castle." : s===17 ? "A vault under the castle? Elowen's family always did love secrets." : s===18 ? "The Royal Key! Take it to the Dark Tower. And bring all four knights." : s===19 ? "Climb, knight. Each floor tests a different power." : s===20 ? "Hurry! Put the last piece in the Crownstone chamber behind the throne." : null;
+    if(w3) return say(who, w3+(S.charm?"":" Need a charm that recharges your power faster? 20 coins."), null, ()=>[ ...(!S.charm?[{label:"Buy charm, 20 coins", dis:S.coins<20, fn:()=>{ S.coins-=20; S.charm=true; save(); toast("Your knight power recharges 30% faster."); }}]:[]), {label:"Goodbye"} ]);
     return say(who, S.charm ? "The charm is working, I see. Your power recharges faster." : "I could brew you a charm that recharges your knight power faster. 20 coins.", null, ()=>[
       ...(!S.charm?[{label:"Buy charm, 20 coins", dis:S.coins<20, fn:()=>{ S.coins-=20; S.charm=true; save(); toast("Your knight power recharges 30% faster."); }}]:[]),
       {label:"Goodbye"}
@@ -1198,11 +1849,18 @@ function talkTo(n){
   if(n.id==="scribe"){
     const tip = s<4 ? "Axe orcs stop and raise their axe before they swing. Hold Shift to block, facing them, or step back."
       : s<6 ? "Club orcs pound the ground. Watch for the red circle and step outside it, then hit back while they recover."
-      : "Archer orcs draw a red line toward you before they shoot. Block, or step sideways out of the line.";
+      : s<16 ? "Archer orcs draw a red line toward you before they shoot. Block, or step sideways out of the line."
+      : "In the Dark Tower, magic bolts go straight through shields. Only the Blue Knight's bubble stops them. And when a bell rings, hide behind a pillar!";
     return say(who,[ "I'm Quill. I keep the kingdom's map and journal. Press Q any time to read your journal.", tip, `Your power, ${K().power}: ${K().tip} Press E to use it.`, "Coppercap Mine is dark. Stay near the lanterns, and remember that minecarts roll a long way once they get going.", "Three other knights are waiting at the banners around the kingdom. Talk to them to join forces, then switch knights at any banner. Some places need a particular knight.", "And the fountain by the castle heals you for free." ]);
   }
 }
+const C3_TYPES = new Set(["castledoor","throne","bed","pie","rack","trophy","crownstone","shelf","vlever","vchest","hchest","rune","bell","piece4"]);
+const C3_SKIP = new Set(["pillar","torch","statue","knot","sentinel","dummy","castledoor_","glowdeco"]);
+const C3_RANGE = {castledoor:74, throne:76, crownstone:84, bed:72, rack:64, trophy:76, shelf:66, pie:58, vlever:58, vchest:72, hchest:64, rune:64, bell:120, piece4:84};
+const C3_H = {castledoor:74, throne:112, crownstone:118, bed:46, rack:82, trophy:72, shelf:92, pie:40, vlever:52, vchest:58, hchest:58, rune:34, bell:120, piece4:76, bossweak:160};
 function useProp(p){
+  if(C3_TYPES.has(p.type)) return c3Prop(p);
+  if(p.type==="bossweak"){ boss=null; for(let i=props.length-1;i>=0;i--) if(props[i].type==="knot") props.splice(i,1); return freeDragon(); }
   if(p.type==="tablet"){ const first=!S.tabletRead; S.tabletRead=true; save();
     return say("Stone Tablet",[`Carved symbols, from top to bottom: <b>${S.order.map(o=>SYMS[o].n).join(", ")}</b>.`, first?"Each crystal has its symbol glowing inside. Strike them in that order.":"Strike the crystals in that order."]); }
   if(p.type==="pedestal"){
@@ -1234,7 +1892,7 @@ function useProp(p){
   if(p.type==="recruit"){ S.team.push(p.k); props.splice(props.indexOf(p),1); save(); burst(p.x,p.y-30,"#e9b649",20,150);
     return say({name:KNIGHTS[p.k].name, img:"knight_"+p.k}, RECRUIT_LINES[p.k], ()=>toast(`${KNIGHTS[p.k].name} joined your team. Switch at any banner.`)); }
   if(p.type==="racepost") return raceMenu();
-  if(p.type==="towervines") return say("The Dark Tower","The vines around the Dark Tower are as thick as tree trunks. You'll need all four Crownstone pieces to get through.");
+  if(p.type==="towervines") return towerGate();
 }
 
 function bannerMenu(){
@@ -1308,15 +1966,21 @@ function nearestInteract(){
   const cand = (o,range,kind)=>{ const d=Math.hypot(o.x-P.x,o.y-P.y); if(d<range && d<bd){ bd=d; best={o,kind}; } };
   npcs.forEach(n=>cand(n,64,"npc"));
   props.forEach(p=>{
-    if(p.type==="crystal"||p.type==="lantern"||p.type==="cart"||p.type==="glowdeco") return;
-    if(p.type==="nest" && !ridgeDragonHere() && !(S.stage<14)) return;
-    const range = p.type==="dragon"?140 : p.type==="towervines"?90 : p.type==="fountain"?80 : (p.type==="pedestal"||p.type==="banner"||p.type==="racepost")?70 : p.type==="recruit"?66 : p.type==="board"?70 : p.type==="nest"?175 : p.type==="ember"?150 : p.type==="mpiece"?70 : 60;
+    if(p.type==="crystal"||p.type==="lantern"||p.type==="cart"||p.type==="glowdeco"||C3_SKIP.has(p.type)) return;
+    if(p.type==="nest" && !S.ridge.freed) return;
+    if(p.type==="towervines" && S.c3.tower) return;
+    if(p.type==="bell" && (!S.c3.boss || S.c3.bell)) return;
+    if(p.type==="rune" && (P.sense<=0 || S.c3.t4b)) return;
+    if(p.type==="vchest" && !S.c3.vault) return;
+    if(p.type==="hchest" && at(18,13)===CRACK) return;
+    if(p.type==="glow" && AREA==="tower3") return;
+    const range = C3_RANGE[p.type] || (p.type==="dragon"?140 : p.type==="towervines"?90 : p.type==="fountain"?80 : (p.type==="pedestal"||p.type==="banner"||p.type==="racepost")?70 : p.type==="recruit"?66 : p.type==="board"?70 : p.type==="nest"?175 : p.type==="ember"?150 : p.type==="mpiece"?70 : 60);
     if(race) return;
     if(p.type==="cache" && P.sense<=0 && S.knight!=="green" && Math.hypot(p.x-P.x,p.y-P.y)>40) return;
     cand(p,range,"prop");
   });
   if(AREA==="world" && pony && !pony.follow && !pony.home) cand(pony,70,"pony");
-  if(AREA==="ridge" && ridgeDragonHere()){ const n=props.find(p=>p.type==="nest"); if(n){ const d=Math.hypot(n.x-P.x,n.y-P.y); if(d<175 && d<bd){ best={o:n,kind:"prop"}; } } }
+  if(boss && boss.kind==="dragon" && boss.state==="weak"){ const d=Math.hypot(boss.x-P.x,boss.y-P.y); if(d<185 && d<bd){ best={o:{type:"bossweak",x:boss.x,y:boss.y},kind:"prop"}; } }
   return best;
 }
 function update(dt){
@@ -1368,9 +2032,12 @@ function update(dt){
   entryToastT=Math.max(0,entryToastT-dt);
   if(AREA==="world" && !P.jump){ const tx=Math.floor(P.x/TILE), ty=Math.floor(P.y/TILE);
     if(tx===24 && ty===4){ enterArea("mine"); return; }
+    if((tx===32||tx===33) && ty===50 && P.fy<-.6 && P.moving && !P.mounted){ enterArea("castle"); return; }
+    if((tx===58||tx===59) && ty===9 && S.c3.tower){ enterArea("tower1"); return; }
     if(tx===1 && ty>=36 && ty<=38){ if(S.stage<11) blockedEntry("The fog is too thick to find a path. (Opens in Chapter 2)",30,0); else { enterArea("marsh"); return; } }
     if(ty===1 && tx>=10 && tx<=12){ if(S.stage<13) blockedEntry("Fresh rockslides block the trail. (Opens later in Chapter 2)",0,30); else { enterArea("ridge"); return; } } }
   if(AREA!=="world" && tileAtPx(P.x,P.y)===EXIT){ exitArea(); return; }
+  if(STAIRS[AREA] && !P.falling){ const tt=tileAtPx(P.x,P.y), st=STAIRS[AREA]; if(tt===UP && st.up){ enterArea(st.up[0], st.up[1]); return; } if(tt===DOWN && st.down){ enterArea(st.down[0], st.down[1]); return; } }
   // horse
   if(AREA==="world" && !P.mounted){
     if(H.coming){ const d=Math.hypot(P.x-H.x,P.y-H.y); if(d>46){ const s=260*dt; H.flip = P.x>H.x; H.x+=(P.x-H.x)/d*s; H.y+=(P.y-H.y)/d*s; } else { H.coming=false; } }
@@ -1389,8 +2056,12 @@ function update(dt){
   }
 
   updateRace(dt);
-  if(AREA==="mine") updateCarts(dt);
-  if(AREA==="marsh"||AREA==="ridge") updateWild(dt);
+  if(AREA==="mine"||AREA==="tower2") updateCarts(dt);
+  if(AREA==="marsh"||AREA==="ridge"||AREA.startsWith("tower")) updateWild(dt);
+  if(AREA==="ridge") updateDragon(dt);
+  if(AREA.startsWith("tower")) updateTower(dt);
+  if(AREA==="vault") updatePush(dt);
+  updateRespawn(dt);
   updateOrcs(dt);
   updateArrows(dt);
   // pickups
@@ -1403,13 +2074,13 @@ function update(dt){
   for(let i=floats.length-1;i>=0;i--){ const f=floats[i]; f.life-=dt*.9; f.y-=34*dt; if(f.life<=0) floats.splice(i,1); }
   for(let i=rings.length-1;i>=0;i--){ const r=rings[i]; r.life-=dt; r.r+= (r.max/.45)*dt; if(r.life<=0) rings.splice(i,1); }
   // camera
-  cam.x = view.w>=WW ? (WW-view.w)/2 : clamp(P.x - view.w/2, 0, WW-view.w); cam.y = view.h>=WH ? (WH-view.h)/2 : clamp(P.y - 30 - view.h/2, 0, WH-view.h);
+  cam.x = view.w>=WW ? (WW-view.w)/2 : clamp(P.x - view.w/2, 0, WW-view.w); const topPad = INDOOR(AREA) ? TILE*2.2 : 0; cam.y = view.h>=WH+topPad ? (WH-view.h-topPad)/2 : clamp(P.y - 30 - view.h/2, -topPad, WH-view.h);
   if(Math.floor(S.time)%10===0 && Math.floor(S.time-dt)%10!==0) save();
 }
 function clearHits(){ for(const k in hit) hit[k]=false; }
 function toggleRide(){
   if(P.jump) return;
-  if(AREA==="mine"){ toast("No room to ride down here. Your horse is waiting outside.",2500); return; }
+  if(AREA!=="world"){ toast("No room to ride here. Your horse is waiting outside.",2500); return; }
   if(P.mounted){ P.mounted=false; const sx=P.x+(H.flip?-36:36); H.x = blocked(sx,P.y,12) ? P.x : sx; H.y=P.y; return; }
   const d=Math.hypot(P.x-H.x,P.y-H.y);
   if(d<72){ P.mounted=true; P.x=H.x; P.y=H.y; H.coming=false; burst(P.x,P.y,"#c9b48a",8,80); }
@@ -1424,33 +2095,33 @@ function ponyImg(){ return S.pony; }
 
 function updateOrcs(dt){
   for(let i=orcs.length-1;i>=0;i--){
-    const o=orcs[i], Kd=ORC_KINDS[o.kind];
+    const o=orcs[i], Kd0=ORC_KINDS[o.kind], Kd={...Kd0, spd:Kd0.spd*D().spd};
     o.t-=dt; o.flash=Math.max(0,o.flash-dt);
     const dx=P.x-o.x, dy=P.y-o.y, d=Math.hypot(dx,dy)||1;
     const home=Math.hypot(o.x-o.hx,o.y-o.hy);
-    const aggro = !P.dead && !race && d<TILE*6.5 && home<TILE*9 && P.y<38.5*TILE;
+    const aggro = !P.dead && !race && S.stage<21 && d<TILE*D().aggro && home<TILE*9 && P.y<38.5*TILE;
     const step=(tx,ty,sp)=>{ const ddx=tx-o.x, ddy=ty-o.y, dd=Math.hypot(ddx,ddy); if(dd<3) return true; o.fx=ddx/dd; o.fy=ddy/dd; const bump=moveEnt(o,o.fx*sp*dt,o.fy*sp*dt); if(bump){ moveEnt(o,-o.fy*sp*dt*.8,o.fx*sp*dt*.8); } return false; };
     if(o.state==="dizzy"){ if(o.t<=0){ o.state="flee"; o.t=1.6; } continue; }
     if(o.state==="flee"){ o.x-=dx/d*130*dt; o.y-=dy/d*130*dt; o.fx=-dx/d; if(o.t<=0) orcs.splice(i,1); continue; }
     if(o.kind==="axe"){
       if(o.state==="idle"){ if(aggro) o.state="chase"; else { if(o.t<=0){ o.tx=o.hx+rnd(-80,80); o.ty=o.hy+rnd(-60,60); o.t=rnd(2,4); } step(o.tx,o.ty,30); } }
-      else if(o.state==="chase"){ if(!aggro){ o.state="home"; } else if(d<48){ o.state="wind"; o.t=.55; o.fx=dx/d; o.fy=dy/d; } else step(P.x,P.y,Kd.spd); }
-      else if(o.state==="wind"){ if(o.t<=0){ o.state="recover"; o.t=.6; o.swing=.2; if(d<62) hurtPlayer(o,1,false); } }
+      else if(o.state==="chase"){ if(!aggro){ o.state="home"; } else if(d<48){ o.state="wind"; o.t=.55*D().wind; o.fx=dx/d; o.fy=dy/d; } else step(P.x,P.y,Kd.spd); }
+      else if(o.state==="wind"){ if(o.t<=0){ o.state="recover"; o.t=.6; o.swing=.2; if(d<62) hurtPlayer(o,dmgOf(1),false); } }
       else if(o.state==="recover"){ if(o.t<=0) o.state="chase"; }
       else if(o.state==="home"){ if(step(o.hx,o.hy,Kd.spd*.8)) { o.state="idle"; o.hp=o.max; } if(aggro && home<TILE*6) o.state="chase"; }
     }
     if(o.kind==="club"){
       if(o.state==="idle"){ if(aggro) o.state="chase"; else { if(o.t<=0){ o.tx=o.hx+rnd(-40,40); o.ty=o.hy+rnd(-30,30); o.t=rnd(2,4); } step(o.tx,o.ty,22); } }
-      else if(o.state==="chase"){ if(!aggro) o.state="home"; else if(d<90){ o.state="wind"; o.t=1.0; o.fx=dx/d; o.fy=dy/d; o.sx=o.x+o.fx*34; o.sy=o.y+o.fy*30; o.sr=78; } else step(P.x,P.y,Kd.spd); }
-      else if(o.state==="wind"){ if(o.t<=0){ o.state="recover"; o.t=1.15; shake=.18; rings.push({x:o.sx,y:o.sy,r:20,max:o.sr,life:.3,col:"#ffcf9a"}); burst(o.sx,o.sy,"#b8946a",16,150,4); if(Math.hypot(P.x-o.sx,P.y-o.sy)<o.sr+6) hurtPlayer({x:o.sx,y:o.sy},1,true); } }
+      else if(o.state==="chase"){ if(!aggro) o.state="home"; else if(d<90){ o.state="wind"; o.tw=1.0*D().wind; o.t=o.tw; o.fx=dx/d; o.fy=dy/d; o.sx=o.x+o.fx*34; o.sy=o.y+o.fy*30; o.sr=78; } else step(P.x,P.y,Kd.spd); }
+      else if(o.state==="wind"){ if(o.t<=0){ o.state="recover"; o.t=1.15; shake=.18; rings.push({x:o.sx,y:o.sy,r:20,max:o.sr,life:.3,col:"#ffcf9a"}); burst(o.sx,o.sy,"#b8946a",16,150,4); if(Math.hypot(P.x-o.sx,P.y-o.sy)<o.sr+6) hurtPlayer({x:o.sx,y:o.sy},dmgOf(2),true); } }
       else if(o.state==="recover"){ if(o.t<=0) o.state="chase"; }
       else if(o.state==="home"){ if(step(o.hx,o.hy,Kd.spd)) { o.state="idle"; o.hp=o.max; } if(aggro && home<TILE*6) o.state="chase"; }
     }
     if(o.kind==="bow"){
       if(o.state==="idle"){ if(aggro){ o.state="cool"; o.t=.4; } else { if(o.t<=0){ o.tx=o.hx+rnd(-80,80); o.ty=o.hy+rnd(-60,60); o.t=rnd(2,4); } step(o.tx,o.ty,30); } }
-      else if(o.state==="cool"){ if(!aggro){ o.state="home"; } else if(d<100){ step(o.x-dx/d*60,o.y-dy/d*60,Kd.spd); } else if(o.t<=0){ o.state="aim"; o.t=.8; } o.fx=dx/d; o.fy=dy/d; }
-      else if(o.state==="aim"){ if(o.t>.22){ o.ax=P.x; o.ay=P.y; } if(o.t<=0){ const ad=Math.hypot(o.ax-o.x,o.ay-o.y)||1; arrows.push({x:o.x,y:o.y-4,vx:(o.ax-o.x)/ad*280,vy:(o.ay-o.y)/ad*280,life:1.8,own:"orc"}); o.shots++;
-          if(o.shots>=2){ o.shots=0; o.state="move"; o.t=1.4; let tries=0; do { o.tx=o.hx+rnd(-110,110); o.ty=o.hy+rnd(-90,90); } while(blocked(o.tx,o.ty,o.r) && ++tries<12); }
+      else if(o.state==="cool"){ if(!aggro){ o.state="home"; } else if(d<100){ step(o.x-dx/d*60,o.y-dy/d*60,Kd.spd); } else if(o.t<=0){ o.state="aim"; o.t=.8*D().wind; } o.fx=dx/d; o.fy=dy/d; }
+      else if(o.state==="aim"){ if(o.t>.22){ o.ax=P.x; o.ay=P.y; } if(o.t<=0){ const ad=Math.hypot(o.ax-o.x,o.ay-o.y)||1; arrows.push({x:o.x,y:o.y-4,vx:(o.ax-o.x)/ad*D().arrow,vy:(o.ay-o.y)/ad*D().arrow,life:1.8,own:"orc"}); o.shots++;
+          if(o.shots>=D().shots){ o.shots=0; o.state="move"; o.t=1.4; let tries=0; do { o.tx=o.hx+rnd(-110,110); o.ty=o.hy+rnd(-90,90); } while(blocked(o.tx,o.ty,o.r) && ++tries<12); }
           else { o.state="cool"; o.t=.9; } } }
       else if(o.state==="move"){ if(step(o.tx,o.ty,Kd.spd) || o.t<=0){ o.state="cool"; o.t=.5; } }
       else if(o.state==="recover"){ if(o.t<=0){ o.state="cool"; o.t=.5; } }
@@ -1463,12 +2134,15 @@ function updateOrcs(dt){
 function updateArrows(dt){
   for(let i=arrows.length-1;i>=0;i--){
     const a=arrows[i]; a.life-=dt; a.x+=a.vx*dt; a.y+=a.vy*dt;
+    if(a.own==="you"){ const sn=props.find(q=>q.type==="sentinel"&&q.alive&&Math.hypot(q.x-a.x,q.y+12-a.y)<36); if(sn){ killSentinel(sn); arrows.splice(i,1); continue; }
+      if(boss && Math.hypot(boss.x-a.x,boss.y-20-a.y)<52 && boss.z<40){ hurtBoss(2,"arrow"); arrows.splice(i,1); continue; } }
     if(a.life<=0 || ARROW_STOP.has(tileAtPx(a.x,a.y))){ arrows.splice(i,1); continue; }
     if(a.own==="orc" && Math.hypot(a.x-P.x,a.y-P.y)<18 && !P.jump){
       if(P.bubble>0){ a.vx*=-1.2; a.vy*=-1.2; a.own="you"; a.life=1.5; burst(a.x,a.y-26,"#9cc8ff",8,100); floatText(P.x,P.y-72,"Bounced!","#9cc8ff"); continue; }
-      const blockedIt = P.blocking && (-a.vx*P.fx - a.vy*P.fy) > 0;
+      const blockedIt = !a.magic && P.blocking && (-a.vx*P.fx - a.vy*P.fy) > 0;
+      if(a.magic && P.blocking && !S.magicTold){ S.magicTold=true; toast("The magic bolt went straight through your shield! Only the Blue Knight's Shield Guard (E) can bounce it.",4200); }
       if(blockedIt){ floatText(P.x,P.y-70,"Blocked","#9cc8ff"); burst(a.x,a.y-26,"#cfe3ff",6,90); arrows.splice(i,1); continue; }
-      hurtPlayer({x:a.x-a.vx*.1,y:a.y-a.vy*.1},1,true); arrows.splice(i,1); continue;
+      hurtPlayer({x:a.x-a.vx*.1,y:a.y-a.vy*.1},dmgOf(1),true); arrows.splice(i,1); continue;
     }
     if(a.own==="you"){ for(const o of orcs){ if(o.state==="dizzy"||o.state==="flee") continue; if(Math.hypot(a.x-o.x,a.y-o.y)<o.r+8){ hurtOrc(o,2,"arrow"); arrows.splice(i,1); break; } } }
   }
@@ -1488,7 +2162,7 @@ function draw(){
   let sx=0, sy=0; if(shake>0){ sx=rnd(-5,5)*shake*4; sy=rnd(-5,5)*shake*4; }
   ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle="#0b1712"; ctx.fillRect(0,0,cv.width,cv.height);
   ctx.setTransform(z,0,0,z,(-cam.x+sx)*z,(-cam.y+sy)*z);
-  ctx.drawImage(stat, cam.x, cam.y, view.w, view.h, cam.x, cam.y, view.w, view.h);
+  { const sx0=Math.max(0,cam.x), sy0=Math.max(0,cam.y), sw=Math.min(view.w, WW-sx0), sh=Math.min(view.h, WH-sy0); if(sw>0&&sh>0) ctx.drawImage(stat, sx0, sy0, sw, sh, sx0, sy0, sw, sh); }
   const x0=Math.floor(cam.x/TILE), y0=Math.floor(cam.y/TILE), x1=Math.ceil((cam.x+view.w)/TILE), y1=Math.ceil((cam.y+view.h)/TILE);
   // water shimmer
   ctx.strokeStyle="#cfeaff"; ctx.lineWidth=2; ctx.lineCap="round";
@@ -1501,6 +2175,8 @@ function draw(){
   if(RST("forge")){ for(let k=0;k<3;k++){ const ph=(tNow*.35+k/3)%1; ctx.fillStyle=`rgba(200,200,200,${.35*(1-ph)})`; ctx.beginPath(); ctx.arc(43.2*TILE+Math.sin(ph*6+k)*8, 38.6*TILE-ph*70, 8+ph*14, 0, 7); ctx.fill(); } }
   }
   if(AREA==="marsh"||AREA==="ridge") drawWildGround();
+  if(AREA==="tower5") drawShocks();
+  if(AREA==="tower2"){ ctx.save(); ctx.translate(11.5*TILE,5.5*TILE); ctx.rotate(S.c3.t2lever==="north"?-Math.PI/2:0); ctx.fillStyle="#e9b649"; ctx.strokeStyle="#2a1d05"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(16,0); ctx.lineTo(-6,-11); ctx.lineTo(-1,0); ctx.lineTo(-6,11); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
   if(AREA==="mine"){ const ex=20.5*TILE, ey=28.5*TILE, g=ctx.createRadialGradient(ex,ey,5,ex,ey,90); g.addColorStop(0,"rgba(255,240,190,.55)"); g.addColorStop(1,"rgba(255,240,190,0)"); ctx.fillStyle=g; ctx.fillRect(ex-90,ey-90,180,180);
     ctx.save(); ctx.translate((JX+.5)*TILE,(JY+.5)*TILE); ctx.rotate(S.mine.lever==="north"?-Math.PI/2:0); ctx.fillStyle="#e9b649"; ctx.strokeStyle="#2a1d05"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(16,0); ctx.lineTo(-6,-11); ctx.lineTo(-1,0); ctx.lineTo(-6,11); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
   // ground layer: carrots, slam circles, archer aim
@@ -1508,12 +2184,13 @@ function draw(){
     if(glow){ ctx.fillStyle="rgba(255,190,90,.35)"; ctx.beginPath(); ctx.arc(c.x,c.y,16+Math.sin(tNow*5+c.a)*3,0,7); ctx.fill(); }
     ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.a); ctx.fillStyle="#f08a2c"; ctx.beginPath(); ctx.moveTo(-9,0); ctx.quadraticCurveTo(0,-5,9,0); ctx.quadraticCurveTo(0,5,-9,0); ctx.fill(); ctx.fillStyle="#5fae5f"; ctx.fillRect(8,-3,6,2); ctx.fillRect(8,1,6,2); ctx.restore(); });
   orcs.forEach(o=>{
-    if(o.kind==="club" && o.state==="wind"){ const k=1-o.t/1.0; ctx.fillStyle=`rgba(230,60,40,${.18+k*.3})`; ctx.strokeStyle="rgba(255,90,60,.9)"; ctx.lineWidth=3; ctx.beginPath(); ctx.ellipse(o.sx,o.sy,o.sr,o.sr*.62,0,0,7); ctx.fill(); ctx.stroke(); ctx.fillStyle="rgba(255,90,60,.35)"; ctx.beginPath(); ctx.ellipse(o.sx,o.sy,o.sr*k,o.sr*.62*k,0,0,7); ctx.fill(); }
+    if(o.kind==="club" && o.state==="wind"){ const k=clamp(1-o.t/(o.tw||1),0,1); ctx.fillStyle=`rgba(230,60,40,${.18+k*.3})`; ctx.strokeStyle="rgba(255,90,60,.9)"; ctx.lineWidth=3; ctx.beginPath(); ctx.ellipse(o.sx,o.sy,o.sr,o.sr*.62,0,0,7); ctx.fill(); ctx.stroke(); ctx.fillStyle="rgba(255,90,60,.35)"; ctx.beginPath(); ctx.ellipse(o.sx,o.sy,o.sr*k,o.sr*.62*k,0,0,7); ctx.fill(); }
     if(o.kind==="bow" && o.state==="aim"){ ctx.strokeStyle=`rgba(255,80,60,${.4+(.8-o.t)*.6})`; ctx.setLineDash([8,8]); ctx.lineWidth=2.5; ctx.beginPath(); ctx.moveTo(o.x,o.y-4); const ad=Math.hypot(o.ax-o.x,o.ay-o.y)||1; ctx.lineTo(o.x+(o.ax-o.x)/ad*Math.min(ad+120,520), o.y-4+(o.ay-o.y)/ad*Math.min(ad+120,520)); ctx.stroke(); ctx.setLineDash([]); }
   });
   // entity list sorted by y
   const list=[];
-  props.forEach(p=>{ if(p.type!=="fountain" && p.type!=="towervines") list.push({y:p.y, d:()=>drawProp(p)}); });
+  props.forEach(p=>{ if(p.type!=="fountain" && p.type!=="towervines" && p.type!=="castledoor") list.push({y:p.y, d:()=>drawProp(p)}); });
+  if(boss) list.push({y:boss.y, d:drawBoss});
   npcs.forEach(n=>list.push({y:n.y, d:()=>{ shadow(n.x,n.y,22); sprite(n.img,n.x,n.y+Math.sin(tNow*2+n.x)*1.2,n.h,false); }}));
   orcs.forEach(o=>list.push({y:o.y, d:()=>drawOrc(o)}));
   if(pony && AREA==="world") list.push({y:pony.y, d:()=>{ shadow(pony.x,pony.y,22); sprite(ponyImg(),pony.x,pony.y,50,pony.flip); }});
@@ -1523,15 +2200,17 @@ function draw(){
   pickups.forEach(p=>list.push({y:p.y, d:()=>drawPickup(p)}));
   list.sort((a,b)=>a.y-b.y).forEach(e=>e.d());
   // arrows
-  arrows.forEach(a=>{ const ang=Math.atan2(a.vy,a.vx); ctx.save(); ctx.translate(a.x,a.y-26); ctx.rotate(ang); ctx.strokeStyle=a.own==="you"?"#9cc8ff":"#5a3a1e"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(-14,0); ctx.lineTo(10,0); ctx.stroke(); ctx.fillStyle="#cfd4d8"; ctx.beginPath(); ctx.moveTo(14,0); ctx.lineTo(8,-4); ctx.lineTo(8,4); ctx.fill(); ctx.fillStyle="#f2ead8"; ctx.fillRect(-16,-3,5,6); ctx.restore(); });
+  arrows.forEach(a=>{ if(a.magic||a.spark){ const c=a.magic?(a.own==="you"?["#9cc8ff","#ffffff"]:["#b080e8","#f1e2ff"]):["#ff8a3a","#ffe08a"]; const g=ctx.createRadialGradient(a.x,a.y-26,1,a.x,a.y-26,16); g.addColorStop(0,c[0]+"cc"); g.addColorStop(1,c[0]+"00"); ctx.fillStyle=g; ctx.fillRect(a.x-16,a.y-42,32,32); blob2(a.x,a.y-26,6,c[0]); blob2(a.x,a.y-26,3,c[1]); return; }
+    const ang=Math.atan2(a.vy,a.vx); ctx.save(); ctx.translate(a.x,a.y-26); ctx.rotate(ang); ctx.strokeStyle=a.own==="you"?"#9cc8ff":"#5a3a1e"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(-14,0); ctx.lineTo(10,0); ctx.stroke(); ctx.fillStyle="#cfd4d8"; ctx.beginPath(); ctx.moveTo(14,0); ctx.lineTo(8,-4); ctx.lineTo(8,4); ctx.fill(); ctx.fillStyle="#f2ead8"; ctx.fillRect(-16,-3,5,6); ctx.restore(); });
   if(AREA==="mine") drawDark(z,sx,sy);
   if(AREA==="marsh") drawFog(z,sx,sy);
   if(AREA==="ridge") drawWind();
+  if(INDOOR(AREA)) drawIndoorLight(z,sx,sy);
   rings.forEach(r=>{ ctx.strokeStyle=r.col; ctx.globalAlpha=Math.max(0,r.life/.45); ctx.lineWidth=5; ctx.beginPath(); ctx.ellipse(r.x,r.y,r.r,r.r*.62,0,0,7); ctx.stroke(); ctx.globalAlpha=1; });
   parts.forEach(p=>{ ctx.globalAlpha=Math.max(0,p.life/p.max); ctx.fillStyle=p.color; ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size); }); ctx.globalAlpha=1;
   floats.forEach(f=>{ ctx.globalAlpha=Math.min(1,f.life*1.6); ctx.font=`600 ${f.big?24:18}px Fredoka, sans-serif`; ctx.textAlign="center"; ctx.lineWidth=4; ctx.strokeStyle="#0b1612"; ctx.strokeText(f.text,f.x,f.y); ctx.fillStyle=f.color; ctx.fillText(f.text,f.x,f.y); }); ctx.globalAlpha=1;
   // interact prompt
-  if(mode==="play" && !dlg){ const n=nearestInteract(); if(n){ const o=n.o, h=n.kind==="npc"?o.h+14:n.kind==="pony"?62:o.type==="dragon"?140:o.type==="banner"?104:o.type==="recruit"?76:o.type==="racepost"?84:o.type==="board"?92:o.type==="log"?44:o.type==="lever"?70:o.type==="toolchest"||o.type==="mchest"||o.type==="rchest"?56:o.type==="nest"?(ridgeDragonHere()?170:40):o.type==="ember"?140:o.type==="glow"?60:o.type==="moon"?44:o.type==="mpiece"?80:60; bubble(o.x,o.y-h, matchMedia("(pointer:coarse)").matches?"Talk":"F"); } }
+  if(mode==="play" && !dlg){ const n=nearestInteract(); if(n){ const o=n.o, h=C3_H[o.type]||(n.kind==="npc"?o.h+14:n.kind==="pony"?62:o.type==="dragon"?140:o.type==="banner"?104:o.type==="recruit"?76:o.type==="racepost"?84:o.type==="board"?92:o.type==="log"?44:o.type==="lever"?70:o.type==="toolchest"||o.type==="mchest"||o.type==="rchest"?56:o.type==="nest"?(ridgeDragonHere()?170:40):o.type==="ember"?140:o.type==="glow"?60:o.type==="moon"?44:o.type==="mpiece"?80:60); bubble(o.x,o.y-h, matchMedia("(pointer:coarse)").matches?"Talk":"F"); } }
   if(AREA==="world" && !P.mounted && !P.dead && Math.hypot(P.x-H.x,P.y-H.y)<72 && mode==="play" && !dlg) bubble(H.x,H.y-82,matchMedia("(pointer:coarse)").matches?"Ride":"R");
   // objective marker
   drawObjective();
@@ -1575,6 +2254,7 @@ function drawOrc(o){
   if(o.state==="wind"||o.state==="aim"){ ctx.font="700 26px Fredoka, sans-serif"; ctx.textAlign="center"; ctx.lineWidth=5; ctx.strokeStyle="#0b1612"; ctx.strokeText("!",o.x,top); ctx.fillStyle="#ff6a4a"; ctx.fillText("!",o.x,top); }
   if(o.state==="dizzy"){ for(let k=0;k<3;k++){ const a=tNow*5+k*2.1; ctx.fillStyle="#f2d24a"; star(o.x+Math.cos(a)*16,top+6+Math.sin(a)*5,5); } }
   if(o.swing>0 && o.kind==="axe"){ const a=Math.atan2(o.fy,o.fx); ctx.strokeStyle=`rgba(255,120,90,${o.swing*4})`; ctx.lineWidth=7; ctx.beginPath(); ctx.arc(o.x,o.y-26,40,a-1,a+1); ctx.stroke(); }
+  if(S.stage>=21 && Math.sin(tNow*1.7+o.hx)>.9) heartPath(o.x, top-6, 7, "#ff8a9a");
   if(o.hp<o.max && o.hp>0){ for(let k=0;k<o.max;k++){ ctx.fillStyle=k<o.hp?"#e2633d":"#00000066"; ctx.fillRect(o.x-o.max*4.5+k*9,top+10,7,4); } }
 }
 function star(x,y,r){ ctx.beginPath(); for(let i=0;i<10;i++){ const a=i*Math.PI/5-Math.PI/2, rr=i%2?r*.45:r; ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr); } ctx.fill(); }
@@ -1586,6 +2266,13 @@ function drawPickup(p){
 }
 function heartPath(x,y,s,col){ ctx.fillStyle=col; ctx.beginPath(); ctx.moveTo(x,y+s*.9); ctx.bezierCurveTo(x-s*1.4,y,x-s*.8,y-s*1.1,x,y-s*.35); ctx.bezierCurveTo(x+s*.8,y-s*1.1,x+s*1.4,y,x,y+s*.9); ctx.fill(); }
 function drawProp(p){
+  if(p.type==="glow" && AREA==="tower3"){ const on=p.lit>0, y=p.y-14; blob2(p.x,p.y+4,22,"#2f2843");
+    if(on){ const g=ctx.createRadialGradient(p.x,y-24,4,p.x,y-24,64); g.addColorStop(0,"rgba(200,220,255,.75)"); g.addColorStop(1,"rgba(200,220,255,0)"); ctx.fillStyle=g; ctx.fillRect(p.x-64,y-88,128,128); }
+    ctx.fillStyle=on?"#d8e8ff":"#5b5480"; ctx.strokeStyle=on?"#ffffff":"#3a2f52"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(p.x,y-54); ctx.lineTo(p.x+15,y-24); ctx.lineTo(p.x+8,y+4); ctx.lineTo(p.x-8,y+4); ctx.lineTo(p.x-15,y-24); ctx.closePath(); ctx.fill(); ctx.stroke();
+    drawSym("moon",p.x,y-22,on?"#7a8fc0":"#8a80b0");
+    if(on && p.lit<999){ ctx.strokeStyle="#d8e8ff"; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(p.x,y-22,24,-Math.PI/2,-Math.PI/2+Math.PI*2*(p.lit/D().glow)); ctx.stroke(); }
+    return; }
+  if(drawC3Prop(p)) return;
   if(p.type==="crystal"){
     const c=SYMS[p.sym].c, lit=p.lit, y=p.y-14;
     shadow(p.x,p.y,16);
@@ -1620,7 +2307,7 @@ function drawProp(p){
     if(!S.marsh.piece){ const y=p.y-58+Math.sin(tNow*3)*3; const g=ctx.createRadialGradient(p.x,y,2,p.x,y,44); g.addColorStop(0,"rgba(160,220,255,.75)"); g.addColorStop(1,"rgba(160,220,255,0)"); ctx.fillStyle=g; ctx.fillRect(p.x-44,y-44,88,88);
       ctx.fillStyle="#7fd0f5"; ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(p.x+4,y-16); ctx.lineTo(p.x+12,y+6); ctx.lineTo(p.x-6,y+12); ctx.lineTo(p.x-12,y-6); ctx.closePath(); ctx.fill(); ctx.stroke(); } }
   if(p.type==="rchest"){ shadow(p.x,p.y,18); ctx.fillStyle="#8a5a34"; ctx.fillRect(p.x-17,p.y-26,34,22); ctx.fillStyle=S.ridge.chest?"#5a3a1e":"#a06c42"; ctx.fillRect(p.x-17,p.y-34,34,10); ctx.fillStyle="#e9b649"; ctx.fillRect(p.x-17,p.y-26,34,3); ctx.fillRect(p.x-3,p.y-28,6,8); }
-  if(p.type==="nest" && ridgeDragonHere()){ const startled = fires.length>0; sprite("dragon",p.x+(startled?Math.sin(tNow*30)*2:0),p.y+Math.sin(tNow*2)*2,150,false);
+  if(p.type==="nest" && false){ const startled = fires.length>0; sprite("dragon",p.x+(startled?Math.sin(tNow*30)*2:0),p.y+Math.sin(tNow*2)*2,150,false);
     ctx.strokeStyle="#7a44b0"; ctx.lineWidth=7; ctx.lineCap="round"; ctx.beginPath(); ctx.moveTo(p.x-70,p.y-60); ctx.quadraticCurveTo(p.x-20,p.y-100,p.x+14,p.y-56); ctx.moveTo(p.x+68,p.y-74); ctx.quadraticCurveTo(p.x+24,p.y-36,p.x-8,p.y-76); ctx.stroke(); ctx.strokeStyle="#b080e8"; ctx.lineWidth=2.5; ctx.stroke();
     if(startled){ ctx.font="700 26px Fredoka, sans-serif"; ctx.textAlign="center"; ctx.lineWidth=5; ctx.strokeStyle="#0b1612"; ctx.strokeText("ROAR!",p.x,p.y-160); ctx.fillStyle="#ff9a5a"; ctx.fillText("ROAR!",p.x,p.y-160); } }
   if(p.type==="ember"){ shadow(p.x,p.y,50); sprite("dragon",p.x,p.y+Math.sin(tNow*1.8)*3,124,false); if(Math.sin(tNow*2)>.4){ ctx.font="600 14px Fredoka, sans-serif"; ctx.textAlign="center"; ctx.fillStyle="#e9b649"; ctx.fillText("Fly? (T)",p.x,p.y-140); } }
@@ -1629,9 +2316,9 @@ function drawProp(p){
     ctx.fillStyle="#7a5232"; ctx.beginPath(); ctx.moveTo(p.x-22,y-34); ctx.lineTo(p.x+22,y-34); ctx.lineTo(p.x+17,y-6); ctx.lineTo(p.x-17,y-6); ctx.closePath(); ctx.fill();
     ctx.fillStyle="#5e6268"; ctx.fillRect(p.x-22,y-34,44,5); ctx.fillRect(p.x-19,y-20,38,4);
     blob2(p.x-7,y-36,6,"#d0803e"); blob2(p.x+6,y-37,5,"#9aa0a6"); blob2(p.x,y-40,5,"#e8a060"); }
-  if(p.type==="lever"){ shadow(p.x,p.y,12); ctx.fillStyle="#4a4d52"; ctx.fillRect(p.x-12,p.y-16,24,14); const a=S.mine.lever==="north"?-.7:.7;
+  if(p.type==="lever"){ shadow(p.x,p.y,12); ctx.fillStyle="#4a4d52"; ctx.fillRect(p.x-12,p.y-16,24,14); const a=leverVal()==="north"?-.7:.7;
     ctx.save(); ctx.translate(p.x,p.y-14); ctx.rotate(a); ctx.fillStyle="#9aa3ab"; ctx.fillRect(-2.5,-30,5,30); blob2(0,-31,6,"#e2633d"); ctx.restore();
-    ctx.font="600 11px Fredoka, sans-serif"; ctx.textAlign="center"; ctx.fillStyle="#e9b649"; ctx.fillText(S.mine.lever==="north"?"N":"E",p.x+(S.mine.lever==="north"?-20:20),p.y-40); }
+    ctx.font="600 11px Fredoka, sans-serif"; ctx.textAlign="center"; ctx.fillStyle="#e9b649"; ctx.fillText(leverVal()==="north"?"N":"E",p.x+(leverVal()==="north"?-20:20),p.y-40); }
   if(p.type==="toolchest"){ shadow(p.x,p.y,18); ctx.fillStyle="#5e6268"; ctx.fillRect(p.x-20,p.y-28,40,24); ctx.fillStyle="#7d8389"; ctx.fillRect(p.x-20,p.y-34,40,9); ctx.fillStyle="#3a3d42"; ctx.fillRect(p.x-20,p.y-25,40,3); ctx.fillStyle="#e9b649"; ctx.fillRect(p.x-7,p.y-20,14,4); ctx.fillRect(p.x-2,p.y-20,4,12);
     const g=ctx.createRadialGradient(p.x,p.y-20,2,p.x,p.y-20,40); g.addColorStop(0,`rgba(233,182,73,${.25+Math.sin(tNow*4)*.1})`); g.addColorStop(1,"rgba(233,182,73,0)"); ctx.fillStyle=g; ctx.fillRect(p.x-40,p.y-60,80,80); }
   if(p.type==="mchest"){ shadow(p.x,p.y,18); ctx.fillStyle="#8a5a34"; ctx.fillRect(p.x-17,p.y-26,34,22); ctx.fillStyle=S.mine.chest?"#5a3a1e":"#a06c42"; ctx.fillRect(p.x-17,p.y-34,34,10); ctx.fillStyle="#e9b649"; ctx.fillRect(p.x-17,p.y-26,34,3); ctx.fillRect(p.x-3,p.y-28,6,8); }
@@ -1698,7 +2385,8 @@ function hud(){
   const ob = stageObjective();
   const html = `<div class="hearts">${Array.from({length:S.maxHp},(_, i)=>HEART(i<S.hp)).join("")}</div><div class="chips"><span class="chip">${COIN}${S.coins}</span><span class="chip">${GEM}${S.pieces}/4</span>${S.race.medal?`<span class="chip" title="Best riding course time"><svg viewBox="0 0 20 20"><circle cx="10" cy="8" r="6" fill="${MEDALS[S.race.medal].c}"/><path d="M6 12l-2 7 4-2 2 3 1-7zM14 12l2 7-4-2-2 3-1-7z" fill="${MEDALS[S.race.medal].c}"/></svg>${MEDALS[S.race.medal].n}</span>`:""}<span class="chip" title="Your knight">${K().name}</span>${(S.mat.timber||S.mat.stone||S.mat.ore||S.bramQuest)?`<span class="chip" title="Timber">${LOGI}${S.mat.timber}</span><span class="chip" title="Stone">${STONEI}${S.mat.stone}</span><span class="chip" title="Copper ore">${OREI}${S.mat.ore}</span>`:""}</div>`;
   if(html!==lastHud){ $("#hud-tl").innerHTML=html; lastHud=html; }
-  const oh = `<b>${race?"Race":(S.stage>=16 && !sideObjective())?"Free roam":S.stage>=16?"Side quest":"Objective"}</b>${ob.t}`; if($("#obj")._h!==oh){ $("#obj").innerHTML=oh; $("#obj")._h=oh; }
+  bossBar();
+  const oh = `<b>${race?"Race":S.stage>=21?(sideObjective()?"Side quest":"Free roam"):"Objective"}</b>${ob.t}`; if($("#obj")._h!==oh){ $("#obj").innerHTML=oh; $("#obj")._h=oh; }
   const cd = P.abMax ? P.abCd/P.abMax : 0;
   const ah = `<div class="ab ${P.abCd<=0?"ready":""}" title="${K().power}"><i style="height:${cd*100}%"></i><span>${K().short}<br>${matchMedia("(pointer:coarse)").matches?"":"E"}</span></div><div class="ab ${P.mounted?"ready":""}" title="Ride"><span>${P.mounted?"Riding":"On foot"}<br>${matchMedia("(pointer:coarse)").matches?"":"R"}</span></div>`;
   $("#abil").innerHTML = ah;
@@ -1717,13 +2405,16 @@ function hud(){
    OVERLAYS: title, journal
    ===================================================================== */
 function showOverlay(html){ const o=$("#ov"); o.innerHTML=html; o.hidden=false; }
+let pickDiff="normal";
 function titleScreen(){
-  mode="title";
+  mode="title"; document.body.classList.remove("boss"); $("#bossbar").hidden=true;
   const saved = loadSave();
   showOverlay(`<h1>Knights of <span>Clovervale</span></h1>
     <p>The Crownstone above Clovervale Castle has shattered. Pick your knight, saddle your horse and ride out to recover the first piece.</p>
     <div class="picks" role="group" aria-label="Choose your knight">${Object.entries(KNIGHTS).map(([k,v])=>`<button class="pick" data-pick="${k}" aria-pressed="${pick===k}"><div class="duo"><img src="${IMG["knight_"+k]}" alt=""><img class="h" src="${IMG[v.horse]}" alt=""></div><b>${v.name}</b><em>${v.power}</em><span>${v.tip}</span></button>`).join("")}</div>
-    <div class="row"><button class="btn gold" data-ov="start">Ride out as the ${KNIGHTS[pick].name}</button>${saved?`<button class="btn" data-ov="continue">Continue (${KNIGHTS[saved.knight].name}, ${saved.stage>=10?"chapter done":"chapter 1"})</button>`:""}</div>
+    <div class="diffs" role="group" aria-label="Difficulty">${Object.entries(DIFF).map(([k,v])=>`<button class="btn" data-diff="${k}" aria-pressed="${pickDiff===k}">${v.n}</button>`).join("")}</div>
+    <p class="diffnote">${DIFF[pickDiff].tip}</p>
+    <div class="row"><button class="btn gold" data-ov="start">Ride out as the ${KNIGHTS[pick].name}</button>${saved?`<button class="btn" data-ov="continue">Continue (${KNIGHTS[saved.knight].name}, ${saved.stage<10?"Chapter 1":saved.stage<16?"Chapter 2":saved.stage<21?"Chapter 3":"Complete"}, ${(DIFF[saved.diff||"normal"]||DIFF.normal).n})</button>`:""}</div>
     <p style="color:var(--muted);font-size:.85rem">${matchMedia("(pointer:coarse)").matches?"Use the stick to move and the buttons to fight, talk and ride.":"Move with WASD or arrows. Space swings your sword, Shift blocks, E uses your knight power, R rides, F talks."}</p>`);
 }
 function openJournal(){
@@ -1736,7 +2427,10 @@ function openJournal(){
     ${q("The Runaway Pony","Princess Elowen",1,3,"Follow the carrot trail west of the meadow, find the pony and lead her into the stable pen.")}
     ${q("The Bridge Guard","Bram the Blacksmith",4,6,"Chase off the club orc at the river bridge, then tell Bram.")}
     ${S.stage>=11?q("The Misty Marsh","Thistlebeard",12,13,"Light the three glowing plants at once to open the first gate. Cross the bog: mossy stones sink if you stand still, and moonlight reveals hidden stones. Chase off the orcs at the second gate, then take the piece from the shrine."):""}
-    ${S.stage>=11?q("A Dragon-Sized Problem","Thistlebeard",14,15,"Climb Dragon Ridge, north past the dragon's old glade. Brace (Shift) when the wind howls on the rope bridges. Dodge the fire bursts in the clearing, then press F by the nest to free the dragon with the Crownstone pieces."):""}
+    ${S.stage>=11?q("A Dragon-Sized Problem","Thistlebeard",14,15,"Climb Dragon Ridge, north past the dragon's old glade. Brace (Shift) when the wind howls on the rope bridges. At the top, cut the three purple vine knots to break Ember's shield, then fight it down. Hide behind rocks from fire breath, dodge the red circles, and strike hard when it's dizzy after a stomp."):""}
+    ${S.stage>=16?q("The Royal Vault","Princess Elowen",17,18,"Go through the secret passage behind the bookshelf in the castle's west wing. Push the three statues onto the glowing plates to open the vault gate, then open the royal chest."):""}
+    ${S.stage>=16?q("The Dark Tower","Princess Elowen",18,20,`Bring the Royal Key and all four knights (${S.team.length}/4 recruited) to the vines in the far north-east. Inside, every floor needs a different knight: carts and a cracked wall (Red), moon crystals (Purple), magic bolts (Blue), a hidden rune (Green). Defeat Grimtusk at the top and silence the bell.`):""}
+    ${S.stage>=16?q("Restore the Crownstone","Thistlebeard",20,21,"Place the last piece in the Crownstone chamber behind the throne, inside the castle."):""}
     ${S.whistle?`<div class="q"><span class="tag">Ember's whistle</span><h3>Fly anywhere outdoors</h3><p>Press T, or use the button below.</p></div>`:""}
     ${q("The First Crownstone Piece","Thistlebeard",7,10,S.tabletRead?`Strike the crystals in order: ${S.order.map(o=>SYMS[o].n).join(", ")}. Then take the piece to Thistlebeard.`:"Find the crystal clearing north of the river. The stone tablet there shows the order.")}
     <div class="q ${S.toolsBack?"done":S.bramQuest?"active":""}"><span class="tag">${S.toolsBack?"Complete":S.bramQuest?"In progress":"Side quest"}</span><h3>Bram's Lost Tools</h3><small>From Bram the Blacksmith</small><p>${S.bramQuest?(S.mine.tools?"You have the tool chest. Bring it to Bram.":"Find Bram's tool chest in Coppercap Mine, up the forest road north-west of the bridge. Strike minecarts to roll them. The junction lever decides which way a cart turns."):"Bram will ask for help once the bridge is clear and you've spoken to Thistlebeard."}</p></div>
@@ -1747,17 +2441,21 @@ function openJournal(){
       <ul style="margin:.3em 0 0;padding-left:1.1em">${Object.keys(KNIGHTS).map(k=>`<li>${S.team.includes(k)?`<b>${KNIGHTS[k].name}</b>: ${KNIGHTS[k].power}. ${KNIGHTS[k].tip}`:`Unknown knight: waiting at one of the banners on the map.`}</li>`).join("")}</ul>
       <small style="margin-top:6px">Switch knights at any banner. The cracked rock in the east meadow needs the Red Knight.</small></div>
     <div class="q"><span class="tag">Riding course</span><h3>${S.race.medal?MEDALS[S.race.medal].n+" ribbon":"No ribbon yet"}</h3><p>${S.race.best?`Best time ${S.race.best.toFixed(1)}s. `:""}Start at the course post by the meadow gate. Gold under ${GOLD_T}s, Silver under ${SILVER_T}s.</p></div>
+    <div class="q"><span class="tag">Difficulty</span><h3>${D().n}</h3><p>${D().tip}</p><div class="diffs" style="justify-content:flex-start;margin-top:6px">${Object.entries(DIFF).map(([k,v])=>`<button class="btn" data-setdiff="${k}" aria-pressed="${(S.diff||"normal")===k}">${v.n}</button>`).join("")}</div></div>
     ${guide?`<div class="q"><span class="tag">Creature guide</span><ul style="margin:.3em 0 0;padding-left:1.1em">${guide}</ul></div>`:""}
     <div class="row" style="justify-content:flex-start"><button class="btn gold" data-ov="resume">Back to the game</button>${S.whistle&&AREA==="world"?`<button class="btn" data-ov="fly">Fly with Ember</button>`:""}<button class="btn" data-ov="title">Save and quit to title</button></div></div>`);
 }
 $("#ov").addEventListener("click", e=>{
   const p=e.target.closest("[data-pick]"); if(p){ pick=p.dataset.pick; titleScreen(); return; }
+  const df=e.target.closest("[data-diff]"); if(df){ pickDiff=df.dataset.diff; titleScreen(); return; }
+  const sd=e.target.closest("[data-setdiff]"); if(sd){ S.diff=sd.dataset.setdiff; save(); mode="play"; openJournal(); toast(`Difficulty set to ${D().n}.`,2000); return; }
   const b=e.target.closest("[data-ov]"); if(!b) return;
   const a=b.dataset.ov;
   if(a==="start"){ clearSave(); S=freshSave(pick); startGame(false); }
   if(a==="continue"){ S=loadSave(); if(!S) return titleScreen(); startGame(true); toast(stageObjective().t); }
   if(a==="resume"){ mode="play"; $("#ov").hidden=true; if(S.stage===10){ S.stage=11; save(); toast("Chapter 2 begins. Thistlebeard wants to see you."); } }
   if(a==="fly"){ mode="play"; $("#ov").hidden=true; flyMenu(); }
+  if(a==="ngplus"){ const k=S.knight; clearSave(); pickDiff="hard"; S=freshSave(k); startGame(false); toast("A new quest begins, on Hard. Good luck!",3000); }
   if(a==="title"){ save(); titleScreen(); }
   if(a==="wake") wake();
 });
