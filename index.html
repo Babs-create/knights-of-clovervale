@@ -318,6 +318,7 @@ function buildMap(){
   const clearSpot = (cx,cy,r)=>disc(cx,cy,r,(x,y)=>{ const t=at(x,y); if(t===TREE||t===ROCK) setT(x,y,G); if(t!==WATER&&t!==WALL&&t!==BRIDGE) keep[y*MW+x]=1; });
   BANNERS.forEach(([x,y])=>clearSpot(x,y,1.7));
   LOGS.forEach(([x,y])=>clearSpot(x,y,1.0));
+  carve([[50.5,13.7],[60.5,13.7]], 1.05, PATH);   // path to the Dark Tower vines
   clearSpot(4.5,36.6,1.8);
   RACE.forEach(([x,y])=>clearSpot(x,y,1.35));
   clearSpot(RACE_POST[0],RACE_POST[1],1.3);
