@@ -1179,7 +1179,7 @@ function losClear(x0,y0,x1,y1){ const d=Math.hypot(x1-x0,y1-y0), n=Math.ceil(d/1
 function dragonAttack(b){
   const d=Math.hypot(P.x-b.x,P.y-b.y), r=Math.random();
   if(d>240){ if(r<.55) startBreath(b); else { b.state="barrage"; b.k=b.phase===2?5:3; b.t=.2; } }
-  else { if(r<.45){ b.state="rise"; b.t=.5; } else if(r<.75){ b.state="gust"; b.t=1.3; b.k=.3; } else startBreath(b); }
+  else { if(r<.45){ b.state="rise"; b.t=.5; } else if(r<.75){ b.state="gust"; b.t=1.0; b.k=.3; } else startBreath(b); }
 }
 function startBreath(b){ b.state="breathWind"; b.tw=.95*D().wind*(b.phase===2?.85:1); b.t=b.tw; b.ang=Math.atan2(P.y-b.y,P.x-b.x); }
 function dragonNext(b){ b.state="move"; b.t=rnd(.7,1.2)*D().cd*(b.phase===2?.7:1); dragonSpot(b); }
@@ -1194,7 +1194,7 @@ function updateDragon(dt){
       say({name:"Ember the Dragon", img:"dragon"},["The dragon's eyes glow purple. The bell's spell has it. It roars and spreads its wings!","Purple vine knots feed it a magic shield. Cut the three knots first, then strike the dragon. Hide behind rocks from its fire breath."]); } return; }
   if(!inArena){ b.z=Math.max(0,b.z-200*dt); return; }
   const dx=P.x-b.x, dy=P.y-b.y, d=Math.hypot(dx,dy)||1; if(Math.abs(dx)>8) b.face = dx>0?1:-1;
-  if(b.z<20 && d<56 && b.state!=="dizzy"){ hurtPlayer({x:b.x,y:b.y},1,true); moveEnt(P,dx/d*30,dy/d*30); }
+  if(b.z<20 && d<46){ moveEnt(P,dx/d*6,dy/d*6); }
   const sp = (b.phase===2?250:195)*D().spd;
   const toward=(tx,ty,s)=>{ const ex=tx-b.x, ey=ty-b.y, ed=Math.hypot(ex,ey); if(ed<4) return true; const m=Math.min(ed,s*dt); b.x+=ex/ed*m; b.y+=ey/ed*m; return ed<8; };
   switch(b.state){
@@ -1209,13 +1209,15 @@ function updateDragon(dt){
     case "barrage": if(b.t<=0){ fires.push({x:P.x+rnd(-14,14)+P.fx*30, y:P.y+rnd(-10,10)+P.fy*20, t:.95, r:46}); b.k--; b.t=.38*(b.phase===2?.8:1); if(b.k<=0){ b.state="wait"; b.t=.9; } } break;
     case "wait": if(b.t<=0) dragonNext(b); break;
     case "rise": b.z=Math.min(130,b.z+300*dt); if(b.t<=0){ b.state="hover"; b.t=.8*D().wind; } break;
-    case "hover": b.z=130; toward(P.x,P.y,330*D().spd); if(b.t<=0){ b.state="drop"; b.t=.34; b.lx=P.x; b.ly=P.y; } break;
+    case "hover": b.z=130; toward(P.x,P.y,250*D().spd); if(b.t<=0){ b.state="lock"; b.tw=.88*D().wind; b.t=b.tw; b.lx=P.x; b.ly=P.y; floatText(b.lx,b.ly-40,"Run!","#ff9a78",true); } break;
+    case "lock": b.z=130; toward(b.lx,b.ly,300); if(b.t<=0){ b.state="drop"; b.t=.25; } break;
     case "drop": { toward(b.lx,b.ly,600); b.z=Math.max(0,b.z-420*dt);
       if(b.t<=0){ b.z=0; shake=.5; rings.push({x:b.x,y:b.y,r:20,max:120,life:.35,col:"#ffcf9a"}); burst(b.x,b.y,"#a39782",30,200,5);
-        const dd=Math.hypot(P.x-b.x,P.y-b.y); if(dd<64) hurtPlayer({x:b.x,y:b.y},dmgOf(2),true); else if(dd<120) hurtPlayer({x:b.x,y:b.y},1,true);
+        const dd=Math.hypot(P.x-b.lx,P.y-b.ly); if(dd<64) hurtPlayer({x:b.lx,y:b.ly},dmgOf(2),true); else if(dd<110) hurtPlayer({x:b.lx,y:b.ly},1,true);
         b.state="dizzy"; b.t=1.9; floatText(b.x,b.y-170,"Dizzy! Strike now!","#f2d24a",true); } break; }
     case "dizzy": if(b.t<=0) dragonNext(b); break;
-    case "gust": { const f = P.bubble>0 ? 0 : P.blocking ? .2 : 1; moveEnt(P, dx/d*200*f*dt, dy/d*200*f*dt);
+    case "gust": { const f = P.bubble>0 ? 0 : P.blocking ? .2 : 1, ux=dx/d, uy=dy/d, hz=t=>t===CHASM||t===VOID;
+      if(P.falling<=0 && !hz(tileAtPx(P.x+ux*(P.r+18),P.y+uy*(P.r+18))) && !hz(tileAtPx(P.x+ux*120*f*dt,P.y+uy*120*f*dt))) moveEnt(P, ux*120*f*dt, uy*120*f*dt);
       b.k-=dt; if(b.k<=0){ b.k=.42; const a=Math.atan2(dy,dx)+rnd(-.25,.25); arrows.push({x:b.x,y:b.y-10,vx:Math.cos(a)*300,vy:Math.sin(a)*300,life:1.6,own:"orc",spark:true}); }
       for(let i=0;i<2;i++) parts.push({x:b.x+rnd(-60,60), y:b.y-rnd(20,90), vx:dx/d*260, vy:dy/d*260, life:.4, max:.4, color:"rgba(235,245,255,.8)", size:3});
       if(b.t<=0) dragonNext(b); break; }
@@ -1278,7 +1280,7 @@ function hurtBoss(dmg,kind){
   if(b.state==="dizzy"||b.state==="stunned") dmg=Math.ceil(dmg*1.5);
   b.hp-=dmg; b.flash=.15; floatText(b.x,b.y-(b.kind==="dragon"?150:110),String(dmg),"#fff",true); burst(b.x,b.y-50,"#fff6c8",8,110);
   if(b.phase===1 && b.hp<=b.max*.5){ b.phase=2;
-    if(b.kind==="dragon"){ let n=0; props.forEach(k=>{ if(k.type==="knot" && n<2){ k.hp=k.max; n++; burst(k.x,k.y-20,"#9a5ce0",20,150,4); } }); b.shield=true; shake=.5; toast("The vines grow back stronger! Cut the knots again.",3200); dragonNext(b); }
+    if(b.kind==="dragon"){ shake=.5; toast("Ember roars in anger! It's faster now.",2800); dragonNext(b); }
     else { toast("Grimtusk is furious! He's faster now.",2600); shake=.4; }
   }
   if(b.hp<=0){ b.hp=0;
@@ -1465,7 +1467,10 @@ function drawBoss(){
   if(b.kind==="dragon"){
     const lift=b.z, fl=b.flash>0?"brightness(2.4)":null;
     shadow(b.x,b.y,Math.max(24,56-lift*.18));
-    if(b.state==="hover"||b.state==="drop"){ const tx=b.state==="drop"?b.lx:b.x, ty=b.state==="drop"?b.ly:b.y; ctx.strokeStyle="rgba(255,80,60,.85)"; ctx.lineWidth=3; ctx.fillStyle="rgba(255,80,60,.18)"; ctx.beginPath(); ctx.ellipse(tx,ty,64,40,0,0,7); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.ellipse(tx,ty,120,74,0,0,7); ctx.stroke(); }
+    if(b.state==="hover"||b.state==="lock"||b.state==="drop"){ const locked=b.state!=="hover", tx=locked?b.lx:b.x, ty=locked?b.ly:b.y, fl=locked?(.5+Math.sin(tNow*24)*.5):0;
+      ctx.strokeStyle=locked?`rgba(255,${60+fl*120},60,.95)`:"rgba(255,80,60,.55)"; ctx.lineWidth=locked?4:2.5; ctx.fillStyle=locked?`rgba(255,60,40,${.2+fl*.2})`:"rgba(255,80,60,.1)";
+      ctx.beginPath(); ctx.ellipse(tx,ty,64,40,0,0,7); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.ellipse(tx,ty,110,68,0,0,7); ctx.stroke();
+      if(b.state==="lock"){ const k=1-b.t/b.tw; ctx.fillStyle="rgba(255,60,40,.25)"; ctx.beginPath(); ctx.ellipse(tx,ty,110*k,68*k,0,0,7); ctx.fill(); } }
     if(b.state==="breathWind"||b.state==="breath"){ const on=b.state==="breath", L=335; ctx.save(); ctx.translate(b.x,b.y); ctx.rotate(b.ang);
       ctx.fillStyle = on ? "rgba(255,120,40,.35)" : `rgba(255,60,40,${.12+(1-b.t/b.tw)*.25})`; ctx.strokeStyle= on?"rgba(255,180,80,.9)":"rgba(255,80,60,.8)"; ctx.lineWidth=2.5;
       ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,L,-.42,.42); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
