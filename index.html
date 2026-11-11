@@ -303,7 +303,7 @@ function buildMap(){
   for(let y=39;y<=51;y++) for(let x=18;x<=45;x++){ setT(x,y,STONE); keep[y*MW+x]=1; }
   for(let x=18;x<=45;x++){ if(x<30||x>33) setT(x,39,WALL); setT(x,51,WALL); }
   for(let y=39;y<=51;y++){ setT(18,y,WALL); setT(45,y,WALL); }
-  for(let y=44;y<=49;y++) for(let x=28;x<=36;x++) setT(x,y,BLOCK);   // castle footprint (row 50 is the front walk)
+  [[44,32,33],[45,32,33],[46,30,33],[46,35,35],[47,29,35],[48,29,35],[49,29,35]].forEach(([y,x0,x1])=>{ for(let x=x0;x<=x1;x++) setT(x,y,BLOCK); });   // castle footprint, traced to the castle picture (row 50 is the front walk)
   for(let y=40;y<=41;y++) for(let x=40;x<=43;x++) setT(x,y,BLOCK);   // forge
   for(let y=46;y<=48;y++) for(let x=20;x<=22;x++) setT(x,y,BLOCK);   // wizard tent
   for(let x=39;x<=41;x++) setT(x,47,BLOCK);                          // scribe desk
@@ -3657,7 +3657,13 @@ function update(dt){
   if(STAIRS[AREA] && !P.falling){ const tt=tileAtPx(P.x,P.y), st=STAIRS[AREA]; if(tt===UP && st.up){ enterArea(st.up[0], st.up[1]); return; } if(tt===DOWN && st.down){ enterArea(st.down[0], st.down[1]); return; } }
   // horse
   if(AREA==="world" && !P.mounted){
-    if(H.coming){ const d=Math.hypot(P.x-H.x,P.y-H.y); if(d>46){ const s=260*dt; H.flip = P.x>H.x; H.walk=(H.walk||0)+dt*14; H.x+=(P.x-H.x)/d*s; H.y+=(P.y-H.y)/d*s; } else { H.coming=false; } }
+    if(H.coming){ const d=Math.hypot(P.x-H.x,P.y-H.y);
+      if(d>46){ const s=260*dt, ox=H.x, oy=H.y, mx=(P.x-H.x)/d*s, my=(P.y-H.y)/d*s; H.flip = P.x>H.x; H.walk=(H.walk||0)+dt*14;
+        if(!blocked(H.x+mx,H.y,14,true)) H.x+=mx; if(!blocked(H.x,H.y+my,14,true)) H.y+=my;
+        H.stuck = Math.hypot(H.x-ox,H.y-oy) < s*.35 ? (H.stuck||0)+dt : 0;
+        if(H.stuck>.7 || d>1100){ const sp=freeNear(P.x,P.y); if(sp){ H.x=sp[0]; H.y=sp[1]; H.flip=P.x>H.x; burst(H.x,H.y,"#c9b48a",10,90); } H.stuck=0; H.coming=false; toast(`${K().horseName} found a way around!`,1800); } }
+      else { H.coming=false; } }
+    else if(!P.mounted && blocked(H.x,H.y,14,true)){ const sp=freeNear(H.x,H.y); if(sp){ H.x=sp[0]; H.y=sp[1]; } }
   } else { H.x=P.x; H.y=P.y; H.flip = P.fx>0.05 ? true : P.fx<-0.05 ? false : H.flip; }
 
   // pony
@@ -3679,7 +3685,7 @@ function update(dt){
   if(AREA.startsWith("tower")) updateTower(dt);
   if(AREA==="vault") updatePush(dt);
   if(AREA==="ruins2") updateGulp(dt);
-  checkCrests(dt); updateRush(dt); updateExtras(dt); c5Tick(dt);
+  unstickPlayer(dt); checkCrests(dt); updateRush(dt); updateExtras(dt); c5Tick(dt);
   if(AREA==="spire1") updateIcePush(dt);
   if(AREA==="spire2") updateMorvane(dt);
   if(AREA==="frost"){ updateWarmth(dt); updateSong(dt); }
@@ -3701,12 +3707,26 @@ function update(dt){
   if(Math.floor(S.time)%10===0 && Math.floor(S.time-dt)%10!==0) save();
 }
 function clearHits(){ for(const k in hit) hit[k]=false; }
+function freeNear(px,py){
+  const cx=Math.floor(px/TILE), cy=Math.floor(py/TILE); let best=null, bd=1e9;
+  for(let r=0;r<=8 && !best;r++) for(let y=cy-r;y<=cy+r;y++) for(let x=cx-r;x<=cx+r;x++){ if(Math.max(Math.abs(x-cx),Math.abs(y-cy))!==r) continue; if(x<1||y<1||x>=MW-1||y>=MH-1) continue;
+    const X=(x+.5)*TILE, Y=(y+.5)*TILE; if(blocked(X,Y,16,true)) continue; const t=at(x,y); if(t===CHASM||t===VOID||t===HIDDEN||t===SINK||(typeof SKY!=="undefined"&&(t===SKY||t===WINDT))) continue;
+    const d=Math.hypot(X-px,Y-py); if(d<bd){ bd=d; best=[X,Y]; } }
+  return best;
+}
+let unstuckT=0;
+function unstickPlayer(dt){
+  if(P.jump || P.falling>0 || P.ride || P.dead || mode!=="play"){ unstuckT=0; return; }
+  if(!blocked(P.x,P.y,P.r,true)){ unstuckT=0; return; }
+  unstuckT+=dt; if(unstuckT<.25) return; unstuckT=0;
+  const sp=freeNear(P.x,P.y); if(sp){ P.x=sp[0]; P.y=sp[1]; if(P.mounted){ H.x=P.x; H.y=P.y; } floatText(P.x,P.y-70,"Phew!","#ffffff"); }
+}
 function toggleRide(){
   if(P.jump) return;
   if(AREA!=="world"){ toast("No room to ride here. Your horse is waiting outside.",2500); return; }
-  if(P.mounted){ P.mounted=false; const sx=P.x+(H.flip?-36:36); H.x = blocked(sx,P.y,12) ? P.x : sx; H.y=P.y; return; }
+  if(P.mounted){ P.mounted=false; const sx=P.x+(H.flip?-36:36), ox=P.x-(H.flip?-36:36); H.x = !blocked(sx,P.y,14,true) ? sx : !blocked(ox,P.y,14,true) ? ox : P.x; H.y=P.y; return; }
   const d=Math.hypot(P.x-H.x,P.y-H.y);
-  if(d<72){ P.mounted=true; P.x=H.x; P.y=H.y; H.coming=false; burst(P.x,P.y,"#c9b48a",8,80); }
+  if(d<72){ P.mounted=true; if(!blocked(H.x,H.y,P.r,true)){ P.x=H.x; P.y=H.y; } H.x=P.x; H.y=P.y; H.coming=false; burst(P.x,P.y,"#c9b48a",8,80); }
   else { H.coming=true; toast(`You whistle. ${K().horseName} comes running.`,2200); }
 }
 function ponyTalk(){
